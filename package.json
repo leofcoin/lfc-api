@@ -27,7 +27,7 @@
   "homepage": "https://github.com/leofcoin/lfc-api#readme",
   "dependencies": {
     "disco-star": "^1.0.3",
-    "lfc-storage": "^1.3.1",
+    "lfc-storage": "^1.4.1",
     "multi-wallet": "^1.2.3",
     "qrcode": "^1.4.1",
     "rollup-plugin-terser": "^5.1.2"
