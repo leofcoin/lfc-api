@@ -272,7 +272,7 @@ var versions = {
 }
 };
 
-var version = "1.0.5";
+var version = "1.0.6";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -442,7 +442,7 @@ class LeofcoinApi {
     config = await init(config);
     if (!config.identity) {
       config.identity = await this.account.generateProfile();
-      
+      await configStore.put(config);
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
     if (start) return this.start(config)
