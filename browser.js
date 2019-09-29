@@ -84,18 +84,6 @@ const expected = (expected, actual) => {
   return `\nExpected:\n\t${expected.join('\n\t')}\n\nactual:\n\t${entries.join('\n\t')}`;
 };
 
-const merge = (object, source) => {
-  for (const key of Object.keys(object)) {
-    if (typeof object[key] === 'object' && source[key] && !Array.isArray(source[key])) object[key] = merge(object[key], source[key]);
-    else if(source[key] && typeof object[key] !== 'object'|| Array.isArray(source[key])) object[key] = source[key];
-  }
-  for (const key of Object.keys(source)) {
-    if (typeof source[key] === 'object' && !object[key] && !Array.isArray(source[key])) object[key] = merge(object[key] || {}, source[key]);
-    else if (typeof source[key] !== 'object' && !object[key] || Array.isArray(source[key])) object[key] = source[key];
-  }
-  return object
-};
-
 const generateQR = async (input, options = {}) => {
   options = { ...DEFAULT_QR_OPTIONS, ...options };
 
@@ -163,148 +151,6 @@ const LevelStore = require('datastore-level');
 const { homedir } = require('os');
 const { join } = require('path');
 const Key = require('interface-datastore').Key;
-
-class LeofcoinStorage {
-
-  constructor(path) {
-    this.root = homedir();
-    this.db = new LevelStore(join(this.root, '.leofcoin', path));
-    // this.db = level(path, { prefix: 'lfc-'})
-  }
-  
-  async many(type, _value) {    
-    const jobs = [];
-    
-    for (const key of Object.keys(_value)) {
-      let value;
-      if (typeof _value[key] === 'object') value = JSON.stringify(_value[key]);
-      else value = _value[key];
-      
-      jobs.push(this[type](key, value));
-    }
-    
-    return Promise.all(jobs)
-  }
-  
-  async put(key, value) {
-    if (!value) return this.many('put', key);
-    if (typeof value === 'object') value = JSON.stringify(value);
-    
-    return this.db.put(new Key(key), value);    
-  }
-  
-  async query() {
-    const object = {};
-    
-    for await (let value of this.db.query({})) {
-      const key = value.key.baseNamespace();
-      value = value.value.toString();
-      object[key] = this.possibleJSON(value);
-    }
-    
-    return object
-  }
-  
-  async get(key) {
-    if (!key) return this.query()
-    if (typeof key === 'object') return this.many('get', key);
-    
-    let data = await this.db.get(new Key(key));
-    if (!data) return undefined
-    data = data.toString();
-        
-    return this.possibleJSON(data)
-  }
-  
-  async delete(key) {
-    return this.db.delete(new Key(key))
-  }
-  
-  possibleJSON(string) {
-    if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' || 
-        string.charAt(0) === '[' && string.charAt(string.length - 1) === ']') 
-        string = JSON.parse(string);
-        
-    return string;
-  }
-
-}
-
-var versions = {
-	"1.0.0": {
-},
-	"1.0.1": {
-	storage: {
-		account: "account"
-	}
-},
-	"1.0.2": {
-},
-	"1.0.3": {
-},
-	"1.0.4": {
-	gateway: {
-		protocol: "leofcoin",
-		port: 8080
-	},
-	api: {
-		protocol: "leofcoin-api",
-		port: 4000
-	},
-	services: [
-		"disco-star",
-		"disco-room"
-	]
-}
-};
-
-var version = "1.0.4";
-
-var upgrade = async config => {
-  const start = Object.keys(versions).indexOf(config.version);
-  const end = Object.keys(versions).indexOf(version);
-  // get array of versions to upgrade to
-  const _versions = Object.keys(versions).slice(start, end + 1);
-  
-  // apply config for each greater version
-  // until current version is applied
-  for (const key of _versions) {
-    const _config = versions[key];
-    config = merge(config, _config);
-    if (key === '1.0.1') {
-      globalThis.accountStore = new LeofcoinStorage(config.storage.account);
-      await accountStore.put({ public: { peerId: config.identity.peerId }});
-    }
-    config.version = key;
-  }
-  await configStore.put(config);
-  return config;
-};
-
-var init = async _config => {
-  globalThis.configStore = new LeofcoinStorage('config');
-  
-  let config = await configStore.get();
-  
-  if (!config || Object.keys(config).length === 0) {
-    config = merge(DEFAULT_CONFIG, config);
-    config = merge(config, _config);
-    
-    // private node configuration & identity
-    await configStore.put(config);
-    // by the public accessible account details
-  }
-  
-  config = await upgrade(config);
-  
-  for (let path of Object.keys(config.storage)) {
-    path = config.storage[path];
-    const store = `${path}Store`;
-    if (!globalThis[store]) globalThis[store] = new LeofcoinStorage(path);
-  }
-  
-  return config;
-};
 
 class Peernet {
   constructor(discoRoom) {
@@ -417,20 +263,25 @@ class Peernet {
 }
 
 class LeofcoinApi {
-  constructor(_config = { init: true }) {
+  constructor(options = { config: {}, init: true, start: true }) {
+    if (!options.config) options.config = {};
     this.config = config;
     this.account = account;
-    if (_config.init) return this._init(_config)
+    if (options.init) return this._init(options)
   }
   
-  async _init(_config = {}) {
-    const config = await init(_config);
-    console.log(config.services);
+  async _init({config, start, init}) {
+    config = await init(config);
     if (!config.identity) {
       config.identity = await this.account.generateProfile();
       
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
+    if (start) return this.start(config)
+    return this;
+  }
+  
+  async start(config = {}) {
     // spin up services
     if (config.services) for (let service of config.services) {
       try {
@@ -441,11 +292,9 @@ class LeofcoinApi {
       } catch (e) {
         console.error(`${service} failed to start`);
       }
-    }
-        
+    }        
     this.peernet = new Peernet(this.discoRoom);
     // this.dht = new SimpleDHT(this.peernet)
-    return this;
   }
   // 
   // async request(multihash) {

@@ -18,20 +18,25 @@ class SimpleDHT {
   }
 }
 export default class LeofcoinApi {
-  constructor(_config = { init: true }) {
+  constructor(options = { config: {}, init: true, start: true }) {
+    if (!options.config) options.config = {}
     this.config = config;
     this.account = account;
-    if (_config.init) return this._init(_config)
+    if (options.init) return this._init(options)
   }
   
-  async _init(_config = {}) {
-    const config = await init(_config)
-    console.log(config.services);
+  async _init({config, start}) {
+    config = await init(config)
     if (!config.identity) {
       config.identity = await this.account.generateProfile()
       
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
+    if (start) return this.start(config)
+    return this;
+  }
+  
+  async start(config = {}) {
     // spin up services
     if (config.services) for (let service of config.services) {
       try {
@@ -42,11 +47,9 @@ export default class LeofcoinApi {
       } catch (e) {
         console.error(`${service} failed to start`)
       }
-    }
-        
+    }        
     this.peernet = new peernet(this.discoRoom);
     // this.dht = new SimpleDHT(this.peernet)
-    return this;
   }
   // 
   // async request(multihash) {

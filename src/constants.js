@@ -36,7 +36,7 @@ const DEFAULT_CONFIG = {
     'disco-star',
     'disco-room'
   ],
-  version: '1.0.4'
+  version: '1.0.5'
 }
 
 export { DEFAULT_CONFIG, DEFAULT_QR_OPTIONS }
