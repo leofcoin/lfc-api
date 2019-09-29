@@ -4,6 +4,25 @@ let QRCode;
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
+function _interopNamespace(e) {
+  if (e && e.__esModule) { return e; } else {
+    var n = {};
+    if (e) {
+      Object.keys(e).forEach(function (k) {
+        var d = Object.getOwnPropertyDescriptor(e, k);
+        Object.defineProperty(n, k, d.get ? d : {
+          enumerable: true,
+          get: function () {
+            return e[k];
+          }
+        });
+      });
+    }
+    n['default'] = e;
+    return n;
+  }
+}
+
 var MultiWallet = _interopDefault(require('multi-wallet'));
 var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
@@ -39,6 +58,10 @@ const DEFAULT_CONFIG = {
       port: 6000
     }
   },
+  api: {
+    protocol: 'leofcoin-api',
+    port: 4000
+  },
   storage: {
     account: 'account',
     shards: 'shards', // path to shards
@@ -49,7 +72,11 @@ const DEFAULT_CONFIG = {
     protocol: 'leofcoin',
     port: 8080
   },
-  version: '1.0.1'
+  services: [
+    'disco-star',
+    'disco-room'
+  ],
+  version: '1.0.4'
 };
 
 const expected = (expected, actual) => {
@@ -61,12 +88,12 @@ const expected = (expected, actual) => {
 
 const merge = (object, source) => {
   for (const key of Object.keys(object)) {
-    if (typeof object[key] === 'object' && source[key]) object[key] = merge(object[key], source[key]);
-    else if(source[key] && typeof object[key] !== 'object') object[key] = source[key];
+    if (typeof object[key] === 'object' && source[key] && !Array.isArray(source[key])) object[key] = merge(object[key], source[key]);
+    else if(source[key] && typeof object[key] !== 'object'|| Array.isArray(source[key])) object[key] = source[key];
   }
   for (const key of Object.keys(source)) {
-    if (typeof source[key] === 'object' && !object[key]) object[key] = merge(object[key], source[key]);
-    else if (typeof source[key] !== 'object' && !object[key]) object[key] = source[key];
+    if (typeof source[key] === 'object' && !object[key] && !Array.isArray(source[key])) object[key] = merge(object[key] || {}, source[key]);
+    else if (typeof source[key] !== 'object' && !object[key] || Array.isArray(source[key])) object[key] = source[key];
   }
   return object
 };
@@ -213,10 +240,24 @@ var versions = {
 	"1.0.2": {
 },
 	"1.0.3": {
+},
+	"1.0.4": {
+	gateway: {
+		protocol: "leofcoin",
+		port: 8080
+	},
+	api: {
+		protocol: "leofcoin-api",
+		port: 4000
+	},
+	services: [
+		"disco-star",
+		"disco-room"
+	]
 }
 };
 
-var version = "1.0.3";
+var version = "1.0.4";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -264,24 +305,203 @@ var init = async _config => {
   return config;
 };
 
+class Peernet {
+  constructor(discoRoom) {
+    this.discoRoom = discoRoom;
+    
+    this.providerMap = new Map();
+    return this
+  }
+  
+  get clientMap() {
+    return this.discoRoom.clientMap
+  }
+  
+  get peerMap() {
+    return this.discoRoom.peerMap
+  }  
+  
+  async getDistance(provider) {
+    const request = `https://tools.keycdn.com/geo.json?host=${provider.address}`;
+    let response = await fetch(request);
+    response = response.json();
+    console.log(response);
+  }
+  
+  async providersFor(hash) {
+    let providers = this.providerMap.get(hash);
+    if (!providers || providers.length === 0) {
+      await this.walk(hash);
+      providers = this.providerMap.get(hash);
+    }
+    
+    let all = [];
+    
+    for (const provider of providers) {
+      all.push(this.getDistance(provider));
+    }
+    
+    all = await Promise.all(all);
+    
+    const closestPeer = all.reduce((p, c) => {
+      if (c.distance < p || p === 0) return c;
+    }, 0);
+    
+    // closestPeer
+    // await connection()
+  }
+  
+  async walk(hash) {
+    // perform a walk but resolve first encounter
+    if (hash) {
+      for (const entry of this.clientMap.entries()) {
+        console.log(entry);
+        console.log(entry[1].client.protocol);
+        const result = await entry[1].request({url: 'has', params: { hash }});
+        console.log(result);
+        if (result) {
+          let providers = [];
+          if (this.providerMap.has(hash)) {
+            providers = this.providerMap.get(hash);
+          }
+          providers.push(entry[1]);
+          this.providerMap.set(hash, providers);
+          if (!this.walking) this.walk();
+          return this.peerMap.get(entry[0])
+        }
+      }      
+    }
+    
+    this.walking = true;    
+    for (const entry of this.clientMap.entries()) {
+      entry[0].request({url: 'ls', params: {}});
+    }
+    this.walking = false;
+  }
+   
+  get(contentHash) {
+    this.providersFor(contentHash);
+    // this.closestPeer()
+  }
+  
+  put() {
+    // iam provider
+  }
+  
+  has() {
+    // fd
+  }
+  
+  /**
+   * Tries removing content from the network
+   * although it tries hard to remove the content from the network, 
+   * when you only have the location of that content.
+   * see [why is my content still available](https://github.com/leofcoin/leofcoin-api/FAQ.md#why-is-my-content-still-available)
+   */
+  remove() {
+    // TODO: only if private and owner
+    // public ledgers should not be allowed to request removal.
+    // instead data should be allowed to die out over time
+    // providers[hash] = []
+    // result: meltdown = null
+    // FYI when your the only one providing that hash, it's gone!
+    // Peernet only resolves locations to that content.
+    // if your unlucky and your content was popular,
+    // people could have pinned your content and it's now available forever,
+    // that's until they decide to remove the content of course.
+    // but surely you didn't put sensitive information on a public network,
+    // did you?
+    // But you encrypted it, right?
+  }
+}
+
 class LeofcoinApi {
-  constructor(_config) {
+  constructor(_config = { init: true }) {
     this.config = config;
     this.account = account;
-    return this._init(_config)
+    if (_config.init) return this._init(_config)
   }
   
   async _init(_config = {}) {
     const config = await init(_config);
+    console.log(config.services);
     if (!config.identity) {
       config.identity = await this.account.generateProfile();
       
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
+    // spin up services
+    if (config.services) for (let service of config.services) {
+      try {
+        service = await new Promise(function (resolve) { resolve(_interopNamespace(require(`./node_modules/${service}/${service}.js`))); });
+        service = service.default;
+        this[service] = await new service(config);
+        console.log(`${service} ready`);
+      } catch (e) {
+        console.error(`${service} failed to start`);
+      }
+    }
+        
+    this.peernet = new Peernet(this.discoRoom);
+    // this.dht = new SimpleDHT(this.peernet)
     return this;
   }
+  // 
+  // async request(multihash) {
+  //   const providers = this.peernet.providers(multihash);
+  //   const getFromClient = async (provider) => {
+  //     const connection = await clientConnection(provider)
+  //     return await connection.request({ url: 'get', params: { multihash }})
+  //   }
+  //   return await Promise.race([getFromClient(providers[0]), getFromClient(providers[1]]))    
+  // }
   
+  async pin(hash) {
+    if (!hash) throw expected(['hash: String'], { hash })
+    let data;
+    try {
+      data = await blockStore.get(hash);
+    } catch (e) {
+      data = await this.request(hash);
+    }
+    return this.put(hash, data)
+  }
   
+  async publish(hash, name) {
+    if (!name) name = this.discoRoom.config.identity.peerId;
+    name = this.keys[name];
+    
+    if (!name) this.keys[name] = this.createNameKey(name);
+    
+    this.peernet.provide(name, hash);
+  }
+  
+  async resolve(name) {
+    // check published bucket of all peers
+    if (!this.keys[name]) throw `${name} name hasn't published any data or is offline`
+    else resolve(name);
+  }
+  
+  async get(hash) {
+    const providers = await this.peernet.providersFor(hash);
+    if (!hash) throw expected(['hash: String'], { hash })
+    return await blockStore.get(hash)
+  }
+  
+  async put(hash, data) {
+    if (!hash || !data) throw expected(['hash: String', 'data: Object', 'data: String', 'data: Number', 'data: Boolean'], { hash, data })
+    return await blockStore.put(hash, data)
+  }
+  
+  async rm(hash) {
+    if (!hash) throw expected(['hash: String'], { hash })
+    return await blockStore.remove(hash)
+  }
+  
+  async ls(hash) {
+    if (!hash) throw expected(['hash: String'], { hash })
+    return await blockStore.ls(hash)
+  }
 }
 
 module.exports = LeofcoinApi;

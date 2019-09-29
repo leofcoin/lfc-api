@@ -6,5 +6,19 @@
     }
   },
   "1.0.2": {},
-  "1.0.3": {}
+  "1.0.3": {},
+  "1.0.4": {
+    "gateway": {
+      "protocol": "leofcoin",
+      "port": 8080
+    },
+    "api": {
+      "protocol": "leofcoin-api",
+      "port": 4000
+    },
+    "services": [
+      "disco-star",
+      "disco-room"
+    ]
+  }
 }

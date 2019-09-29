@@ -18,6 +18,10 @@ const DEFAULT_CONFIG = {
       port: 6000
     }
   },
+  api: {
+    protocol: 'leofcoin-api',
+    port: 4000
+  },
   storage: {
     account: 'account',
     shards: 'shards', // path to shards
@@ -28,7 +32,11 @@ const DEFAULT_CONFIG = {
     protocol: 'leofcoin',
     port: 8080
   },
-  version: '1.0.1'
+  services: [
+    'disco-star',
+    'disco-room'
+  ],
+  version: '1.0.4'
 }
 
 export { DEFAULT_CONFIG, DEFAULT_QR_OPTIONS }
