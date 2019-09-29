@@ -21,5 +21,11 @@
       "disco-room"
     ]
   },
-  "1.0.5": {}
+  "1.0.5": {},
+  "1.0.6": {
+    "discovery": {
+      "peers": ["IPv6/star.leofcoin.org/6000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"]
+    }
+  }
+  
 }

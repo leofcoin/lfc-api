@@ -11,7 +11,7 @@ const DEFAULT_QR_OPTIONS = {
 const DEFAULT_CONFIG = {
   discovery: {
     // peer addresses to discover other peers
-    peers: ['IPv6/star.leofcoin.org/6000/disco-room/'],
+    peers: ['IPv6/star.leofcoin.org/6000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
@@ -36,7 +36,7 @@ const DEFAULT_CONFIG = {
     'disco-star',
     'disco-room'
   ],
-  version: '1.0.5'
+  version: '1.0.6'
 }
 
 export { DEFAULT_CONFIG, DEFAULT_QR_OPTIONS }
