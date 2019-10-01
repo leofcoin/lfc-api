@@ -34,7 +34,7 @@ const DEFAULT_QR_OPTIONS = {
 const DEFAULT_CONFIG = {
   discovery: {
     // peer addresses to discover other peers
-    peers: ['IPv6/star.leofcoin.org/6000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+    peers: ['IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
@@ -266,10 +266,17 @@ var versions = {
 			port: 5000
 		}
 	}
+},
+	"1.0.10": {
+	discovery: {
+		peers: [
+			"IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
+		]
+	}
 }
 };
 
-var version = "1.0.9";
+var version = "1.0.10";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
