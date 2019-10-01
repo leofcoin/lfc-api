@@ -1,5 +1,5 @@
 const test = require('tape');
-const m = require('./index.js');
+const m = require('./commonjs.js');
 
 const {codes, privateKey, mnemonic } = {
   codes: [
@@ -13,6 +13,7 @@ const {codes, privateKey, mnemonic } = {
 test('wetalk-api', async tape => {
   tape.plan(2);
   const mm = await new m()
+  console.log(m);
 const c = await mm.config.get()
 console.log(c);
   const code = await mm.account.generateQR('hello');

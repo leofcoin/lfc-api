@@ -3,6 +3,8 @@ import account from './api/account'
 import init from './api/init';
 import peernet from './api/peernet';
 import { expected } from './utils.js';
+import DiscoStar from 'disco-star';
+import DiscoRoom from 'disco-room';
 
 class SimpleDHT {
   constructor(config, discoRoom) {
@@ -22,6 +24,7 @@ export default class LeofcoinApi {
     if (!options.config) options.config = {}
     this.config = config;
     this.account = account;
+    console.log(options.init);
     if (options.init) return this._init(options)
   }
   
@@ -32,23 +35,21 @@ export default class LeofcoinApi {
       await configStore.put(config)
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
-    if (start) return this.start(config)
+    if (start) await this.start(config)
     return this;
   }
   
   async start(config = {}) {
     // spin up services
-    if (config.services) for (let service of config.services) {
-      try {
-        service = await import(`./node_modules/${service}/${service}.js`)
-        service = service.default;
-        this[service] = await new service(config)
-        console.log(`${service} ready`);
-      } catch (e) {
-        console.error(`${service} failed to start`)
-      }
-    }        
+    try {      
+      this.discoStar = await new DiscoStar(config)  
+    } catch (e) {
+      console.warn(`failed loading disco-star`)
+    }
+    
+    this.discoRoom = await new DiscoRoom(config)
     this.peernet = new peernet(this.discoRoom);
+    return
     // this.dht = new SimpleDHT(this.peernet)
   }
   // 

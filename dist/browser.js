@@ -6,8 +6,8 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 var MultiWallet = _interopDefault(require('multi-wallet'));
 var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
-var DiscoStar = _interopDefault(require('disco-star'));
 var DiscoRoom = _interopDefault(require('disco-room'));
+var DiscoStar = _interopDefault(require('disco-star'));
 
 var config = {
   get: async (key) => {
@@ -37,7 +37,7 @@ const DEFAULT_CONFIG = {
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
-      port: 5000
+      port: 6000
     }
   },
   api: {
@@ -58,7 +58,7 @@ const DEFAULT_CONFIG = {
     'disco-star',
     'disco-room'
   ],
-  version: '1.0.9'
+  version: '1.0.6'
 };
 
 const expected = (expected, actual) => {
@@ -261,17 +261,10 @@ var versions = {
 			"IPv6/star.leofcoin.org/6000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
 		]
 	}
-},
-	"1.0.9": {
-	discovery: {
-		star: {
-			port: 5000
-		}
-	}
 }
 };
 
-var version = "1.0.9";
+var version = "1.0.8";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -454,8 +447,7 @@ class LeofcoinApi {
       this.discoStar = await new DiscoStar(config);  
     } catch (e) {
       console.warn(`failed loading disco-star`);
-    }
-    
+    }      
     this.discoRoom = await new DiscoRoom(config);
     this.peernet = new Peernet(this.discoRoom);
     return

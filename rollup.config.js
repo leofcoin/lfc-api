@@ -11,7 +11,7 @@ try {
 } catch (e) {
   
 }
-
+execSync('cp node_modules/disco-room/disco-room.js src/lib/disco-room.js')
 execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
 // execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
 
@@ -38,7 +38,10 @@ export default [{
       QRCODE_IMPORT: `if (!window.QRCode) {
         const imported = await import('./../lib/qrcode.js');
         window.QRCode = imported.default;
-      }`
+      }`,
+      DISCO_ROOM_IMPORT: `
+        const imported = await import('./lib/disco-room.js');
+        const DiscoRoom = imported.default;`
     }),
     cjs({
       namedExports: {
@@ -46,7 +49,8 @@ export default [{
         // relative to the current directory, or the name
         // of a module in node_modules
         './../lib/qrcode.js': ['QRCode'],
-        './../node_modules/multi-wallet/src/index.js': ['MultiWallet']
+        './../node_modules/multi-wallet/src/index.js': ['MultiWallet'],
+        './../node_modules/disco-room/disco-room.js': ['DiscoRoom']
       }
     }),
     replace({
@@ -75,7 +79,8 @@ export default [{
   plugins: [
     json(),
     modify({
-      QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`
+      QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`,
+      DISCO_ROOM_IMPORT: `const DiscoRoom = require('disco-room')`
     }),
     
     cjs({
@@ -84,7 +89,8 @@ export default [{
         // relative to the current directory, or the name
         // of a module in node_modules
         './../lib/qrcode.js': ['QRCode'],
-        './../node_modules/multi-wallet/src/index.js': ['MultiWallet']
+        './../node_modules/multi-wallet/src/index.js': ['MultiWallet'],
+        './../node_modules/disco-room/disco-room.js': ['DiscoRoom']
       }
     })
   ],

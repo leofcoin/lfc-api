@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
-      port: 6000
+      port: 5000
     }
   },
   api: {
@@ -36,7 +36,7 @@ const DEFAULT_CONFIG = {
     'disco-star',
     'disco-room'
   ],
-  version: '1.0.6'
+  version: '1.0.9'
 }
 
 export { DEFAULT_CONFIG, DEFAULT_QR_OPTIONS }
