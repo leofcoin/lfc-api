@@ -4,7 +4,8 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var connection = _interopDefault(require('socket-request-client'));
 var PubSub = _interopDefault(require('little-pubsub'));
-var allSettled = _interopDefault(require('promise.allSettled'));
+
+// import allSettled from 'promise.allSettled'
 
 class DiscoRoom {
   constructor(config = {}) {
@@ -24,28 +25,32 @@ class DiscoRoom {
     return this._init();
   }
   
-  async connect(peerId, {port, address, protocol}) {
+  async connect({peerId, port, address, protocol}) {
     const client = await connection({port, address, protocol, peerId});
-console.log(client)
     return {client, peerId}
+  }
+  
+  async allSettled (array, unsettled = []) {
+    const promises = array.map(peerInfo => this.connect(peerInfo));
+    try {
+      const settled = await Promise.all(promises);
+      return settled
+    } catch (e) {
+      if (array.length > 0) return this.allSettled(array.filter(a => a.peerId !== e.peerId), unsettled)
+      return settled
+    }
   }
   
   async _init() {
     if (!this.config.discovery || !this.config.discovery.peers) throw new Error('expected config.discovery.peers to be defined')
     if (!this.config.identity || !this.config.identity.peerId) throw new Error('expected config.identity.peerId to be defined')
     const all = [];
-    const tries = [];
     for (const star of this.config.discovery.peers) {
       const { port, address, protocol, peerId } = this.parseAddress(star);
-console.log(port, address, protocol, peerId)
-
-      all.push(this.connect(peerId, {port, address, protocol}));       
+      all.push({peerId, port, address, protocol});
     }
-    for (const { status, value, reason } of await allSettled(all)) {
-console.log('all')
-console.log(status, reason)
-      if (status === 'fulfilled') {
-        const { client, peerId } = value;
+    for (const { peerId, client } of await this.allSettled(all)) {
+      if (peerId) {
         if (client.client.readyState !== 3) {
           const addressBook = [this.config.api, this.config.gateway, this.config.discovery.star];
           const peers = await client.request({url: 'join', params: { peerId: this.config.identity.peerId, addressBook } });
@@ -57,33 +62,8 @@ console.log(status, reason)
           client.on('leave', this._onLeave);
           this.clientMap.set(peerId, client);  
         }  
-      } else {
-        // retry
-        
-        tries.push(this.connect(reason.peerId, reason));
       }      
     }
-    for (const { status, value, reason } of await allSettled(tries)) {
-      if (status === 'fulfilled') {
-        const { client, peerId } = value;
-        if (client.client.readyState !== 3) {
-          const addressBook = [this.config.api, this.config.gateway, this.config.discovery.star];
-          const peers = await client.request({url: 'join', params: { peerId: this.config.identity.peerId, addressBook } });
-          for (const peer of peers) {
-            if (this.peers.indexOf(peer) === -1) this.peers.push(peer);
-          }
-          client.on('error', this._onError);
-          client.on('join', this._onJoin);
-          client.on('leave', this._onLeave);
-          this.clientMap.set(peerId, client);  
-        }  
-      }
-      
-      
-    }
-    
-    
-    
     
     process.on('SIGINT', async (m) => {
       console.log(m);
