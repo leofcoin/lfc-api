@@ -7,6 +7,8 @@ var PubSub = _interopDefault(require('little-pubsub'));
 
 // import allSettled from 'promise.allSettled'
 
+const wss = typeof window !== 'undefined';
+
 class DiscoRoom {
   constructor(config = {}) {
     this.pubsub = new PubSub();
@@ -26,7 +28,7 @@ class DiscoRoom {
   }
   
   async connect({peerId, port, address, protocol}) {
-    const client = await connection({port, address, protocol, peerId});
+    const client = await connection({port, address, protocol, peerId, wss});
     return {client, peerId}
   }
   
@@ -72,8 +74,9 @@ class DiscoRoom {
       //graceful shutdown
     });
     
-    process.on('exit', async () => {
+    process.on('exit', async (m) => {
       console.log("Caught interrupt signal");
+      console.log(m);
       // await star.stop();
       for (const entry of this.clientMap.entries()) {
         await entry[1].request({url: 'leave', params: {peerId: this.config.identity.peerId} });
@@ -99,7 +102,7 @@ class DiscoRoom {
   }
   
   async dialPeer(peerId, { port, protocol, address }) {
-    const client = await connection({ port, protocol, address });
+    const client = await connection({ port, protocol, address, wss });
     client.on('join', this._onJoin);
     client.on('leave', this._onLeave);
     this.clientMap.set(peerId, client);
