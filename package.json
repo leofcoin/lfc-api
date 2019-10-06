@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/leofcoin/lfc-api#readme",
   "dependencies": {
-    "disco-room": "^1.0.7",
+    "disco-room": "^1.0.8",
     "disco-star": "^1.0.9",
     "lfc-storage": "^1.4.1",
     "multi-wallet": "^1.2.3",
