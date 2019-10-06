@@ -4,6 +4,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var connection = _interopDefault(require('socket-request-client'));
 var PubSub = _interopDefault(require('little-pubsub'));
+var ip = require('ip');
 
 // import allSettled from 'promise.allSettled'
 
@@ -27,7 +28,13 @@ class DiscoRoom {
     return this._init();
   }
   
+  isDomain(address) {
+    if (ip.toLong(address) === 0) return true;
+    return false;
+  }
+  
   async connect({peerId, port, address, protocol}) {
+    if (this.isDomain(address) && !port) port = 8080;
     const client = await connection({port, address, protocol, peerId, wss});
     return {client, peerId}
   }
@@ -56,7 +63,9 @@ class DiscoRoom {
         if (client.client.readyState !== 3) {
           const addressBook = [this.config.api, this.config.gateway, this.config.discovery.star];
           const peers = await client.request({url: 'join', params: { peerId: this.config.identity.peerId, addressBook } });
+          // console.log(peers);
           for (const peer of peers) {
+            console.log(peer);
             if (this.peers.indexOf(peer) === -1) this.peers.push(peer);
           }
           client.on('error', this._onError);
@@ -91,7 +100,15 @@ class DiscoRoom {
   
   parseAddress(address) {    
     const parts = address.split('/');
-    
+    if (parts[0] === 'ns' && isNaN(parts[2])) {
+      return {
+        family: parts[0],
+        address: parts[1],
+        port: 8080,
+        protocol: parts[2],
+        peerId: parts[3]
+      }
+    }
     return {
       family: parts[0],
       address: parts[1],
@@ -102,6 +119,7 @@ class DiscoRoom {
   }
   
   async dialPeer(peerId, { port, protocol, address }) {
+    console.log(port, address);
     const client = await connection({ port, protocol, address, wss });
     client.on('join', this._onJoin);
     client.on('leave', this._onLeave);
@@ -125,7 +143,7 @@ class DiscoRoom {
         }
         
       } catch (e) {
-        console.warn(e);      
+          console.warn({e});      
       }      
       this.pubsub.publish('join', { peerId, addressBook });
     }

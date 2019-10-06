@@ -31,15 +31,29 @@ const DEFAULT_QR_OPTIONS = {
   }
 };
 
-const DEFAULT_CONFIG = {
+const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
   discovery: {
     // peer addresses to discover other peers
-    peers: ['IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+    peers: ['ns/star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
-    star: {
-      protocol: 'disco-room',
-      port: 5000
-    }
+    // not used in the browser
+  }  
+};
+
+const DEFAULT_NODE_DISCOVERY_CONFIG = {
+  // peer addresses to discover other peers
+  peers: ['IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+  // disco-star configuration see https://github.com/leofcoin/disco-star
+  star: {
+    protocol: 'disco-room',
+    port: 5000
+  }
+};  
+
+
+const DEFAULT_CONFIG = {
+  discovery: {
+    // environmental
   },
   api: {
     protocol: 'leofcoin-api',
@@ -276,7 +290,7 @@ var versions = {
 }
 };
 
-var version = "1.0.11";
+var version = "1.0.12";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -299,12 +313,21 @@ var upgrade = async config => {
   return config;
 };
 
+const envConfig = () => {
+  if (typeof window === 'undefined') {
+    DEFAULT_CONFIG.discovery = DEFAULT_NODE_DISCOVERY_CONFIG;
+  } else {
+    DEFAULT_CONFIG.discovery = DEFAULT_BROWSER_DISCOVERY_CONFIG;
+  }
+  return DEFAULT_CONFIG;
+};
+
 var init = async _config => {
   globalThis.configStore = new LeofcoinStorage('config');
   
   let config = await configStore.get();
   if (!config || Object.keys(config).length === 0) {
-    config = merge(DEFAULT_CONFIG, config);
+    config = merge(envConfig(), config);
     config = merge(config, _config);
     
     // private node configuration & identity
