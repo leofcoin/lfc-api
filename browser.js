@@ -256,10 +256,6 @@ var versions = {
 		account: "account"
 	}
 },
-	"1.0.2": {
-},
-	"1.0.3": {
-},
 	"1.0.4": {
 	gateway: {
 		protocol: "leofcoin",
@@ -274,15 +270,6 @@ var versions = {
 		"disco-room"
 	]
 },
-	"1.0.5": {
-},
-	"1.0.6": {
-	discovery: {
-		peers: [
-			"IPv6/star.leofcoin.org/6000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
-		]
-	}
-},
 	"1.0.9": {
 	discovery: {
 		star: {
@@ -290,20 +277,15 @@ var versions = {
 		}
 	}
 },
-	"1.0.10": {
-	discovery: {
-		peers: [
-			"IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
-		]
-	}
-},
 	"1.0.14": {
 	discovery: {
 	}
+},
+	"1.0.16": {
 }
 };
 
-var version = "1.0.14";
+var version = "1.0.15";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -319,6 +301,10 @@ var upgrade = async config => {
     if (key === '1.0.1') {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
       await accountStore.put({ public: { peerId: config.identity.peerId }});
+    }
+    if (key === '1.0.16') {
+      const defaultConfig = envConfig();
+      config.discovery = defaultConfig.discovery;
     }
     config.version = key;
   }
