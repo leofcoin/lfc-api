@@ -287,10 +287,14 @@ var versions = {
 			"IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
 		]
 	}
+},
+	"1.0.14": {
+	discovery: {
+	}
 }
 };
 
-var version = "1.0.12";
+var version = "1.0.13";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -314,6 +318,7 @@ var upgrade = async config => {
 };
 
 const envConfig = () => {
+  console.log(typeof window === 'undefined');
   if (typeof window === 'undefined') {
     DEFAULT_CONFIG.discovery = DEFAULT_NODE_DISCOVERY_CONFIG;
   } else {
