@@ -285,7 +285,7 @@ var versions = {
 }
 };
 
-var version = "1.0.18";
+var version = "1.0.21";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);

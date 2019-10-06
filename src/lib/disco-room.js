@@ -61,11 +61,11 @@ class DiscoRoom {
     for (const { peerId, client } of await this.allSettled(all)) {
       if (peerId) {
         if (client.client.readyState !== 3) {
-          const star = this.config.discovery.star;
+          let star = this.config.discovery.star;
           if (!star) star = { protocol: 'disco-room', port: 80};
           const addressBook = [this.config.api, this.config.gateway, star];
           const peers = await client.request({url: 'join', params: { peerId: this.config.identity.peerId, addressBook } });
-          console.log(peers);
+          
           for (const peer of peers) {
             console.log(peer);
             if (this.peers.indexOf(peer) === -1) this.peers.push(peer);
