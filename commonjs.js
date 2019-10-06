@@ -33,14 +33,14 @@ const DEFAULT_QR_OPTIONS = {
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // peer addresses to discover other peers
-    peers: ['ns/star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+    peers: ['star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     // not used in the browser
 };
 
 const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // peer addresses to discover other peers
-  peers: ['IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+  peers: ['star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-room',
@@ -280,10 +280,12 @@ var versions = {
 	}
 },
 	"1.0.16": {
+},
+	"1.0.17": {
 }
 };
 
-var version = "1.0.15";
+var version = "1.0.17";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -300,7 +302,7 @@ var upgrade = async config => {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
-    if (key === '1.0.16') {
+    if (key === '1.0.16' || key === '1.0.17') {
       const defaultConfig = envConfig();
       config.discovery = defaultConfig.discovery;
     }

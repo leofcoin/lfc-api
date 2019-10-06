@@ -10,14 +10,14 @@ const DEFAULT_QR_OPTIONS = {
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // peer addresses to discover other peers
-    peers: ['ns/star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+    peers: ['star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     // not used in the browser
 }
 
 const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // peer addresses to discover other peers
-  peers: ['IPv6/star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+  peers: ['star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-room',
