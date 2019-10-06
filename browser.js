@@ -31,12 +31,10 @@ const DEFAULT_QR_OPTIONS = {
 };
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
-  discovery: {
     // peer addresses to discover other peers
     peers: ['ns/star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     // not used in the browser
-  }  
 };
 
 const DEFAULT_NODE_DISCOVERY_CONFIG = {
@@ -92,6 +90,15 @@ const merge = (object, source) => {
     else if (typeof source[key] !== 'object' && !object[key] || Array.isArray(source[key])) object[key] = source[key];
   }
   return object
+};
+
+const envConfig = () => {
+  if (typeof window === 'undefined') {
+    DEFAULT_CONFIG.discovery = DEFAULT_NODE_DISCOVERY_CONFIG;
+  } else {
+    DEFAULT_CONFIG.discovery = DEFAULT_BROWSER_DISCOVERY_CONFIG;
+  }
+  return DEFAULT_CONFIG;
 };
 
 const generateQR = async (input, options = {}) => {
@@ -296,7 +303,7 @@ var versions = {
 }
 };
 
-var version = "1.0.13";
+var version = "1.0.14";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -317,16 +324,6 @@ var upgrade = async config => {
   }
   await configStore.put(config);
   return config;
-};
-
-const envConfig = () => {
-  console.log(typeof window === 'undefined');
-  if (typeof window === 'undefined') {
-    DEFAULT_CONFIG.discovery = DEFAULT_NODE_DISCOVERY_CONFIG;
-  } else {
-    DEFAULT_CONFIG.discovery = DEFAULT_BROWSER_DISCOVERY_CONFIG;
-  }
-  return DEFAULT_CONFIG;
 };
 
 var init = async _config => {

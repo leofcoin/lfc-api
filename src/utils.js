@@ -1,3 +1,5 @@
+import { DEFAULT_CONFIG, DEFAULT_NODE_DISCOVERY_CONFIG, DEFAULT_BROWSER_DISCOVERY_CONFIG } from './constants';
+
 const expected = (expected, actual) => {
   const entries = Object.entries(actual)
     .map(entry => entry.join(!entry[1] ? `: undefined - ${entry[1]} ` : `: ${typeof entry[1]} - `));
@@ -17,4 +19,13 @@ const merge = (object, source) => {
   return object
 }
 
-export { expected, merge }
+const envConfig = () => {
+  if (typeof window === 'undefined') {
+    DEFAULT_CONFIG.discovery = DEFAULT_NODE_DISCOVERY_CONFIG;
+  } else {
+    DEFAULT_CONFIG.discovery = DEFAULT_BROWSER_DISCOVERY_CONFIG;
+  }
+  return DEFAULT_CONFIG;
+}
+
+export { expected, merge, envConfig }
