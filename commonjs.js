@@ -37,7 +37,7 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
-      port: 80
+      port: 8080
     }
 };
 
@@ -285,10 +285,12 @@ var versions = {
 	"1.0.16": {
 },
 	"1.0.17": {
+},
+	"1.0.23": {
 }
 };
 
-var version = "1.0.22";
+var version = "1.0.24";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -305,7 +307,7 @@ var upgrade = async config => {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
-    if (key === '1.0.16' || key === '1.0.17') {
+    if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23') {
       const defaultConfig = envConfig();
       config.discovery = defaultConfig.discovery;
     }

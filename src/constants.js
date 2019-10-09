@@ -14,7 +14,7 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
-      port: 80
+      port: 8080
     }
 }
 
