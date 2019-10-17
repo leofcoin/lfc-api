@@ -21,6 +21,14 @@ class SimpleDHT {
   }
 }
 export default class LeofcoinApi {
+  get connectionMap() {
+    console.log(this.discoStar.connectionMap.entries());
+    console.log(this.discoRoom.connectionMap.entries());
+    return this.discoRoom.connectionMap
+  }
+  get peerMap() {
+    return this.discoRoom.peerMap
+  }
   constructor(options = { config: {}, init: true, start: true }) {
     if (!options.config) options.config = {}
     this.config = config;
@@ -55,6 +63,10 @@ export default class LeofcoinApi {
     
     this.addressBook = addressBook
     
+    await new DiscoServer(config.api, {
+      has: this._onhas.bind(this),
+      route: this._onRoute.bind(this)
+    })
     if (config.discovery.star) {
       try {
         this.discoStar = await new DiscoStar({
@@ -79,15 +91,76 @@ export default class LeofcoinApi {
         value: addressBook,
         writable: false
       })
-      await new DiscoServer(config.api, {
-        has: this._onhas.bind(this)
-      })
       this.discoRoom = await new DiscoRoom(config)
       this.peernet = new peernet(this.discoRoom, this.discoStar);
       return
       // this.dht = new SimpleDHT(this.peernet)
     }
   }
+  
+  routedRequest(connection, message, response) {
+      const messageId = uuid();
+      
+      const data = JSON.stringify({
+        url: 'route',
+        status: 200,
+        value: message,
+        id: messageId,
+        customMessage: true
+      });
+      
+      const onmessage = message => {
+        console.log({message});
+        let data;
+        if (message.type) {
+          switch (message.type) {
+            case 'binary':
+              data = message.binaryData.toString();
+              break;
+            case 'utf8':
+              data = message.utf8Data;
+              break;
+          }
+        }
+        const { route, params, url, id } = JSON.parse(data);          
+        if (id === messageId) {
+          response.send(data)
+          connection.removeListener('message', onmessage)
+        }
+      }
+      connection.on('message', onmessage)
+      connection.send(data)
+    }
+    
+    /**
+     * Route data between nodes who can't connect to each other.
+     */
+    async _onRoute(message, response) {
+      console.log({message});
+      if (message.to && this.connectionMap.has(message.to)) {
+        const { addressBook, connection } = this.connectionMap.get(message.to)
+        const address = addressBook.reduce((c, p) => {
+          const {protocol} = parseAddress(c)
+          if (protocol === message.protocol) return c;
+          return p;
+        }, null)
+        if (address) await this.discoRoom.dialPeer(address)
+        // if (!Array.isArray(message.from)) message.from = [message.from]      
+        // message.from = [...message.from, this.peerId]
+        this.routedRequest(connection, message, response)
+      } else if (!this.connectionMap.has(message.to)) {
+        message.from = this.peerId;
+        for (const [peerId, {connection}] of this.connectionMap.entries()) {        
+          message.to = peerId;
+          this.routedRequest(connection, message, response) 
+        }
+      } else {
+        console.warn('unimplemented behavior');
+        // TODO: search for peer
+      }
+      
+      
+    }
   
   _onhas(params, response) {
     console.log(params);

@@ -8,11 +8,12 @@ export default async config => {
   const end = Object.keys(versions).indexOf(version);
   // get array of versions to upgrade to
   const _versions = Object.keys(versions).slice(start, end + 1)
-  
+  console.log({ver: versions[version]});
   // apply config for each greater version
   // until current version is applied
   for (const key of _versions) {
     const _config = versions[key]
+    console.log(_config);
     config = merge(config, _config)
     if (key === '1.0.1') {
       globalThis.accountStore = new Storage(config.storage.account)

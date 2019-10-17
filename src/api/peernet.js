@@ -49,7 +49,17 @@ export default class Peernet {
         const client = clients[this.protocol]
         console.log(client);
         if (client !== undefined) {
-          const result = await client.request({url: 'has', params: { hash }})
+          const onerror = error => {
+            
+          }
+          let result;
+          try {
+               result = await client.request({url: 'has', params: { hash }})
+          } catch (error) {
+            console.log({error});
+          } finally {
+            
+          }
           console.log({result});
           if (result && result.value || typeof result === 'boolean' && result) {
             let providers = []
@@ -120,7 +130,18 @@ export default class Peernet {
     const protocol = this.protocol
     for (const [peerId, clients] of this.clientMap.entries()) {      
       let client = clients[protocol]
-      if (!client) client = clients['disco-room']
+      if (!client) {
+        if (this.peerMap.has(peerId)) {
+          const protoAddress = this.peerMap.get(peerId).reduce((p, c) => {
+            const {address, protocol} = parseAddress(c)
+            if (protocol === this.protocol) return c
+            return p
+          }, null)
+          const { port, address, protocol } = parseAddress(protoAddress)
+          client = await clientConnection({ port, address, protocol })
+        }
+      }
+      if (!client) client = protocols['disco-room']
       console.log({client, clients});
       if (peerId !== this.discoRoom.peerId && client) {
         let result = await client.request({url: 'route', params: { type, protocol, hash, peerId: this.discoRoom.peerId, from: this.discoRoom.peerId }})  

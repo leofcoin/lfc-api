@@ -35,7 +35,8 @@ const DEFAULT_QR_OPTIONS = {
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // peer addresses to discover other peers
-    peers: ['star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+    peers: ['star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp',
+            'star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
@@ -45,7 +46,8 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
 
 const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // peer addresses to discover other peers
-  peers: ['star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+  peers: ['star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp',
+          'star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-room',
@@ -131,7 +133,7 @@ const isDomain = address => {
   return false;
 };
 
-const parseAddress = address => {
+const parseAddress$1 = address => {
   const parts = address.split('/');
   if (isDomain(parts[0]) && isNaN(parts[1])) {
     return {
@@ -351,6 +353,21 @@ var versions = {
 	"1.0.17": {
 },
 	"1.0.23": {
+},
+	"1.0.24": {
+	discovery: {
+		peers: [
+			"star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp",
+			"star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
+		],
+		star: {
+			protocol: "disco-room",
+			interval: 10000,
+			port: 5000
+		}
+	}
+},
+	"1.0.25": {
 }
 };
 
@@ -361,11 +378,12 @@ var upgrade = async config => {
   const end = Object.keys(versions).indexOf(version);
   // get array of versions to upgrade to
   const _versions = Object.keys(versions).slice(start, end + 1);
-  
+  console.log({ver: versions[version]});
   // apply config for each greater version
   // until current version is applied
   for (const key of _versions) {
     const _config = versions[key];
+    console.log(_config);
     config = merge(config, _config);
     if (key === '1.0.1') {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
@@ -417,7 +435,7 @@ class DhtEarth {
    * 
    */
   async getCoordinates(provider) {
-    const {address} = parseAddress(provider);
+    const {address} = parseAddress$1(provider);
     console.log({address});
     const request = `https://tools.keycdn.com/geo.json?host=${address}`;
     let response = await fetch(request);
@@ -525,11 +543,18 @@ class Peernet {
         const client = clients[this.protocol];
         console.log(client);
         if (client !== undefined) {
-          const result = await client.request({url: 'has', params: { hash }});
+          let result;
+          try {
+               result = await client.request({url: 'has', params: { hash }});
+          } catch (error) {
+            console.log({error});
+          } finally {
+            
+          }
           console.log({result});
           if (result && result.value || typeof result === 'boolean' && result) {
             const address = this.peerMap.get(peerId).reduce((p, c) => {
-              const {address, protocol} = parseAddress(c);
+              const {address, protocol} = parseAddress$1(c);
               if (protocol === this.protocol) return c
               return p
             }, null);
@@ -555,7 +580,7 @@ class Peernet {
     if (!providers || providers.length === 0) throw `nothing found for ${hash}`
     const closestPeer = await this.dht.closestPeer(providers);
     console.log({closestPeer});
-    const { protocol, port, address, peerId } = parseAddress(closestPeer);    
+    const { protocol, port, address, peerId } = parseAddress$1(closestPeer);    
     let client;
     if (this.clientMap.has(peerId)) {
       client = this.clientMap.get(peerId);
@@ -595,13 +620,24 @@ class Peernet {
     const protocol = this.protocol;
     for (const [peerId, clients] of this.clientMap.entries()) {      
       let client = clients[protocol];
-      if (!client) client = clients['disco-room'];
+      if (!client) {
+        if (this.peerMap.has(peerId)) {
+          const protoAddress = this.peerMap.get(peerId).reduce((p, c) => {
+            const {address, protocol} = parseAddress$1(c);
+            if (protocol === this.protocol) return c
+            return p
+          }, null);
+          const { port, address, protocol } = parseAddress$1(protoAddress);
+          client = await clientConnection({ port, address, protocol });
+        }
+      }
+      if (!client) client = protocols['disco-room'];
       console.log({client, clients});
       if (peerId !== this.discoRoom.peerId && client) {
         let result = await client.request({url: 'route', params: { type, protocol, hash, peerId: this.discoRoom.peerId, from: this.discoRoom.peerId }});  
         
         const address = result.addressBook.reduce((p, c) => {
-          const {address, protocol} = parseAddress(c);
+          const {address, protocol} = parseAddress$1(c);
           if (protocol === this.protocol) return c
           return p
         }, null);
@@ -658,6 +694,14 @@ class Peernet {
 }
 
 class LeofcoinApi {
+  get connectionMap() {
+    console.log(this.discoStar.connectionMap.entries());
+    console.log(this.discoRoom.connectionMap.entries());
+    return this.discoRoom.connectionMap
+  }
+  get peerMap() {
+    return this.discoRoom.peerMap
+  }
   constructor(options = { config: {}, init: true, start: true }) {
     if (!options.config) options.config = {};
     this.config = config;
@@ -692,6 +736,10 @@ class LeofcoinApi {
     
     this.addressBook = addressBook;
     
+    await new DiscoServer(config.api, {
+      has: this._onhas.bind(this),
+      route: this._onRoute.bind(this)
+    });
     if (config.discovery.star) {
       try {
         this.discoStar = await new DiscoStar({
@@ -716,12 +764,79 @@ class LeofcoinApi {
         value: addressBook,
         writable: false
       });
-      await new DiscoServer(config.api);
       this.discoRoom = await new DiscoRoom(config);
       this.peernet = new Peernet(this.discoRoom, this.discoStar);
       return
       // this.dht = new SimpleDHT(this.peernet)
     }
+  }
+  
+  routedRequest(connection, message, response) {
+      const messageId = uuid();
+      
+      const data = JSON.stringify({
+        url: 'route',
+        status: 200,
+        value: message,
+        id: messageId,
+        customMessage: true
+      });
+      
+      const onmessage = message => {
+        console.log({message});
+        let data;
+        if (message.type) {
+          switch (message.type) {
+            case 'binary':
+              data = message.binaryData.toString();
+              break;
+            case 'utf8':
+              data = message.utf8Data;
+              break;
+          }
+        }
+        const { route, params, url, id } = JSON.parse(data);          
+        if (id === messageId) {
+          response.send(data);
+          connection.removeListener('message', onmessage);
+        }
+      };
+      connection.on('message', onmessage);
+      connection.send(data);
+    }
+    
+    /**
+     * Route data between nodes who can't connect to each other.
+     */
+    async _onRoute(message, response) {
+      console.log({message});
+      if (message.to && this.connectionMap.has(message.to)) {
+        const { addressBook, connection } = this.connectionMap.get(message.to);
+        const address = addressBook.reduce((c, p) => {
+          const {protocol} = parseAddress(c);
+          if (protocol === message.protocol) return c;
+          return p;
+        }, null);
+        if (address) await this.discoRoom.dialPeer(address);
+        // if (!Array.isArray(message.from)) message.from = [message.from]      
+        // message.from = [...message.from, this.peerId]
+        this.routedRequest(connection, message, response);
+      } else if (!this.connectionMap.has(message.to)) {
+        message.from = this.peerId;
+        for (const [peerId, {connection}] of this.connectionMap.entries()) {        
+          message.to = peerId;
+          this.routedRequest(connection, message, response); 
+        }
+      } else {
+        console.warn('unimplemented behavior');
+        // TODO: search for peer
+      }
+      
+      
+    }
+  
+  _onhas(params, response) {
+    console.log(params);
   }
   // 
   // async request(multihash) {

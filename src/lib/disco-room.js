@@ -22,17 +22,23 @@ class DiscoRoom {
     return peers;
   }
   
+  
+  
   get protocol() {
     return this.config.discovery.star.protocol
   }
   get peerId() {
     return this.config.identity.peerId;
   }
+  
+  addProto(proto, fn) {
+    console.log(proto);
+    this.protos[proto] = fn;
+  }
   constructor(config = {}) {
     this.pubsub = new PubSub();
     this.config = config;
     this.clients = [];
-    
     this.clientMap = new Map();
     this.peerMap = new Map();
     this.providerMap = new Map();
@@ -42,6 +48,82 @@ class DiscoRoom {
     this._onError = this._onError.bind(this);
     this._onRoute = this._onRoute.bind(this);
     
+    this.protos = {
+      'disco-room': async message => {
+          if (message.from === this.peerId) return;
+          
+          if (!message.peers) {
+            if (this.clientMap.has(message.from)) {
+              const connections = this.clientMap.get(message.from);
+              const connection = connections[message.protocol || message.type];
+              console.log(connection);
+              if (connection && connection.connected) {
+                connection.send({
+                  url: 'route', status: 200,
+                  params: {
+                    peerId: this.peerId,
+                    from: this.peerId,
+                    to: message.peerId,
+                    peers: this.peers
+                  }
+                });    
+              } else {
+                const addresses = this.peerMap.get(message.from);
+                const address = addresses.reduce((p, c) => {
+                  const { protocol, port, address, peerId } = m.parseAddress(c);
+                  if (protocol === message.protocol) return c;
+                  return p;
+                }, null);
+                await dial(address);
+                const connections = this.peerMap.get(message.from);                                
+                const connection = connections[message.protocol || message.type];
+                if (connection && connection.connected) {
+                  connection.send({
+                    url: 'route', status: 200,
+                    params: {
+                      peerId: this.peerId,
+                      from: this.peerId,
+                      to: message.peerId,
+                      peers: this.peers
+                    }
+                  });    
+                }
+              }
+              
+            }
+          } else {
+            console.log({addressBook});
+            for (const addressBook of message.peers) {
+              const {peerId} = this.parseAddress(addressBook[0]);
+              if (!this.peerMap.has(peerId)) {
+                try {
+                  const address = addressBook.reduce((p, c) => {
+                    const { protocol, port, address } = this.parseAddress(c);
+                    if (protocol === this.config.discovery.star.protocol) return { protocol, port, address };
+                    return p;
+                  }, null);
+                  if (address) {
+                    await this.dialPeer(peerId, address);
+                    console.log('dial success');
+                    this.peerMap.set(peerId, addressBook);  
+                  }
+                  
+                } catch (e) {
+                    console.warn({e});      
+                }
+              }
+            }
+          }
+          return
+      }
+    };
+    this.proto = async message => {
+      console.log({message});
+      const proto = this.protos[message.protocol || message.type];
+      if (!proto) return console.warn('unimplemented protocol: ' + message.protocol);
+      return await proto(message)
+      
+    };
     return this._init();
   }
   
@@ -52,8 +134,8 @@ class DiscoRoom {
   
   async connect({peerId, port, address, protocol}) {
     if (this.isDomain(address) && !port) port = 8080;
-    
     const client = await connection({port, address, protocol, peerId, wss});
+    console.log('connected', client);
     return {client, peerId, protocol}
   }
   
@@ -68,13 +150,6 @@ class DiscoRoom {
     }
   }
   
-  addClient({peerId, protocol, client}) {
-    let clients = {};
-    if (this.clientMap.has(peerId)) clients = this.clientMap.get(peerId) 
-    clients[protocol] = client;
-    this.clientMap.set(peerId, clients);
-  }
-  
   async _init() {
     if (!this.config.discovery || !this.config.discovery.peers) throw new Error('expected config.discovery.peers to be defined')
     if (!this.config.identity || !this.config.identity.peerId) throw new Error('expected config.identity.peerId to be defined')
@@ -85,13 +160,17 @@ class DiscoRoom {
     }
     for (const { peerId, client, protocol } of await this.allSettled(all)) {
       if (peerId) {
-        if (client.client.readyState !== 3) {          
-          this.addClient({peerId, protocol, client})
+        if (client.client.readyState !== 3) {
+          this.addClient({peerId, protocol, client});
           let star = this.config.discovery.star;
           if (!star) star = { protocol: 'disco-room', port: 8080 };
           const addressBook = [this.config.api, this.config.gateway, star];
           const addresses = await client.request({url: 'join', params: { peerId: this.config.identity.peerId, addressBook } });
-          
+          console.log({addresses});
+          addresses.push([
+            'star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp',
+            'star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'
+          ]);
           for (const addressBook of addresses) {
             const {peerId} = this.parseAddress(addressBook[0]);
             try {
@@ -107,15 +186,16 @@ class DiscoRoom {
               }
               
             } catch (e) {
-                console.warn({e});      
+                console.warn({e, 'error': true});      
             }  
           }
           client.on('error', this._onError);
           client.on('join', this._onJoin);
           client.on('leave', this._onLeave);
-          client.on('route', this._onRoute);
+          client.on('route', this._onRoute); 
         }  
-      }      
+      }
+      return this
     }
     
     process.on('SIGINT', async (m) => {
@@ -130,7 +210,7 @@ class DiscoRoom {
       console.log(m);
       // await star.stop();
       for (const [peerId, clients] of this.clientMap.entries()) {
-        const client = clients[this.config.discovery.star.protocol]
+        const client = clients[this.config.discovery.star.protocol];
         if (client) await client.request({url: 'leave', params: {peerId: this.config.identity.peerId} });
       }
       setTimeout(async () => {
@@ -159,6 +239,12 @@ class DiscoRoom {
     }
   }
   
+  async dial(_address) {
+    console.log(_address);
+    const { peerId, protocol, address, port } = this.parseAddress(_address);
+    return this.dialPeer(peerId, {port, protocol, address})
+  }
+  
   async dialPeer(peerId, { port, protocol, address }, type) {
     console.log(port, address);
     if (this.isDomain(address) || typeof window === 'undefined') {
@@ -166,14 +252,14 @@ class DiscoRoom {
         const client = await connection({ port, protocol, address, wss, peerId });
         client.on('join', this._onJoin);
         client.on('leave', this._onLeave);
-        console.log(client);
-        this.addClient({peerId, protocol, client})
+        
+        this.addClient({peerId, protocol, client});
       }
       // TODO: get, set, ls      
     } else {
       if (!type) {
         for (const [peerId, clients] of this.clientMap.entries()) {
-          const client = clients[this.config.discovery.star.protocol]
+          const client = clients[this.config.discovery.star.protocol];
           if (client) client.send({ url: 'route', params: {peerId: this.peerId, from: this.peerId, to: peerId, protocol}});
         }
       }
@@ -183,40 +269,17 @@ class DiscoRoom {
     return
   }
   
+  addClient({peerId, protocol, client}) {
+    let clients = {};
+    if (this.clientMap.has(peerId)) clients = this.clientMap.get(peerId); 
+    clients[protocol] = client;
+    this.clientMap.set(peerId, clients);
+  }
+  
   async _onRoute(message) {
     console.log({message});
-    const { from, to, type, addressBook, peerId } = message;
-    if (to === this.peerId && this.peerId !== from) {
-      if (!message.peers && message.protocol === 'disco-room' && this.clientMap.has(from)) {
-        const connections = this.clientMap.get(from);
-        const connection = connections[message.protocol || message.type]
-        if (connection) connection.send({url: 'route', status: 200, params: {peerId: this.peerId, from: this.peerId, to: peerId, peers: this.peers}});  
-      } else if (message.peers && message.protocol === 'disco-room') {
-        for (const addressBook of message.peers) {
-          const {peerId} = this.parseAddress(addressBook[0]);
-          if (!this.peerMap.has(peerId)) {
-            try {
-              const address = addressBook.reduce((p, c) => {
-                const { protocol, port, address } = this.parseAddress(c);
-                if (protocol === this.config.discovery.star.protocol) return { protocol, port, address };
-                return p;
-              }, null);
-              if (address) {
-                await this.dialPeer(peerId, address);
-                console.log('dial success');
-                this.peerMap.set(peerId, addressBook);  
-              }
-              
-            } catch (e) {
-                console.warn({e});      
-            }
-          }
-        }
-      }
-      
-    } else {
-      console.warn('unimplemented behavior');
-    }
+    
+      return this.proto(message)
     
     
   }
@@ -239,7 +302,7 @@ class DiscoRoom {
       } catch (e) {
         const {protocol, peerId, } = e;
         for (const [peerId, clients] of this.clientMap.entries()) {
-          const client = clients[this.protocol]
+          const client = clients[this.protocol];
           client.send({ url: 'route', params: {peerId: this.peerId, from: this.peerId, to: peerId, protocol}});
         }
       }      
