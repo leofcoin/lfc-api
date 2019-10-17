@@ -1,3 +1,5 @@
+import ip from 'ip';
+import fetch from 'node-fetch';
 import { DEFAULT_CONFIG, DEFAULT_NODE_DISCOVERY_CONFIG, DEFAULT_BROWSER_DISCOVERY_CONFIG } from './constants';
 
 const expected = (expected, actual) => {
@@ -28,4 +30,63 @@ const envConfig = () => {
   return DEFAULT_CONFIG;
 }
 
-export { expected, merge, envConfig }
+const degreesToRadians = degrees => {
+  return degrees * Math.PI / 180;
+}
+
+const distanceInKmBetweenEarthCoordinates = (lat1, lon1, lat2, lon2) => {
+  var earthRadiusKm = 6371;
+
+  var dLat = degreesToRadians(lat2-lat1);
+  var dLon = degreesToRadians(lon2-lon1);
+
+  lat1 = degreesToRadians(lat1);
+  lat2 = degreesToRadians(lat2);
+console.log(lat1, lat2);
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return earthRadiusKm * c;
+}
+
+const isDomain = address => {
+  if (ip.toLong(address) === 0) return true;
+  return false;
+}
+
+const parseAddress = address => {
+  const parts = address.split('/');
+  if (isDomain(parts[0]) && isNaN(parts[1])) {
+    return {
+      address: parts[0],
+      port: 8080,
+      protocol: parts[1],
+      peerId: parts[2]
+    }
+  }
+  return {
+    address: parts[0],
+    port: Number(parts[1]),
+    protocol: parts[2],
+    peerId: parts[3]
+  }
+}
+
+const lastFetched = {
+  time: 0,
+  address: undefined
+}
+const getAddress = async () => {
+  let {address, time} = lastFetched
+  const now = Math.round(new Date().getTime() / 1000);
+  if (now - time > 300) {
+    address = await fetch('https://icanhazip.com/')
+    address = await address.text()
+    lastFetched.address = address;
+    lastFetched.time = Math.round(new Date().getTime() / 1000);  
+  }
+  
+  return address
+}
+
+export { expected, merge, parseAddress, getAddress, envConfig, degreesToRadians, distanceInKmBetweenEarthCoordinates }

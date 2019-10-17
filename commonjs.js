@@ -5,10 +5,14 @@ let QRCode;
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var MultiWallet = _interopDefault(require('multi-wallet'));
+var ip = _interopDefault(require('ip'));
+var fetch = _interopDefault(require('node-fetch'));
 var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
+var clientConnection = _interopDefault(require('socket-request-client'));
 var DiscoStar = _interopDefault(require('disco-star'));
 var DiscoRoom = _interopDefault(require('disco-room'));
+var DiscoServer = _interopDefault(require('disco-server'));
 
 var config = {
   get: async (key) => {
@@ -47,10 +51,10 @@ const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-room',
+    interval: 10000,
     port: 5000
   }
 };  
-
 
 const DEFAULT_CONFIG = {
   discovery: {
@@ -103,6 +107,65 @@ const envConfig = () => {
     DEFAULT_CONFIG.discovery = DEFAULT_BROWSER_DISCOVERY_CONFIG;
   }
   return DEFAULT_CONFIG;
+};
+
+const degreesToRadians = degrees => {
+  return degrees * Math.PI / 180;
+};
+
+const distanceInKmBetweenEarthCoordinates = (lat1, lon1, lat2, lon2) => {
+  var earthRadiusKm = 6371;
+
+  var dLat = degreesToRadians(lat2-lat1);
+  var dLon = degreesToRadians(lon2-lon1);
+
+  lat1 = degreesToRadians(lat1);
+  lat2 = degreesToRadians(lat2);
+console.log(lat1, lat2);
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return earthRadiusKm * c;
+};
+
+const isDomain = address => {
+  if (ip.toLong(address) === 0) return true;
+  return false;
+};
+
+const parseAddress = address => {
+  const parts = address.split('/');
+  if (isDomain(parts[0]) && isNaN(parts[1])) {
+    return {
+      address: parts[0],
+      port: 8080,
+      protocol: parts[1],
+      peerId: parts[2]
+    }
+  }
+  return {
+    address: parts[0],
+    port: Number(parts[1]),
+    protocol: parts[2],
+    peerId: parts[3]
+  }
+};
+
+const lastFetched = {
+  time: 0,
+  address: undefined
+};
+const getAddress = async () => {
+  let {address, time} = lastFetched;
+  const now = Math.round(new Date().getTime() / 1000);
+  if (now - time > 300) {
+    address = await fetch('https://icanhazip.com/');
+    address = await address.text();
+    lastFetched.address = address;
+    lastFetched.time = Math.round(new Date().getTime() / 1000);  
+  }
+  
+  return address
 };
 
 const generateQR = async (input, options = {}) => {
@@ -341,12 +404,92 @@ var init = async _config => {
   return config;
 };
 
-class Peernet {
-  constructor(discoRoom) {
-    this.discoRoom = discoRoom;
-    
+class DhtEarth {
+  /**
+   * 
+   */
+  constructor() {
     this.providerMap = new Map();
+  }
+  
+  /**
+   * 
+   */
+  async getCoordinates(provider) {
+    const {address} = parseAddress(provider);
+    console.log({address});
+    const request = `https://tools.keycdn.com/geo.json?host=${address}`;
+    let response = await fetch(request);
+    response = await response.json();
+    console.log(response);
+    const { latitude, longitude } = response.data.geo;
+    return { latitude, longitude }
+  }
+  
+  /**
+   * 
+   */
+  async getDistance(peer, provider) {
+    const { latitude, longitude } = await this.getCoordinates(provider);
+    return {provider, distance: distanceInKmBetweenEarthCoordinates(peer.latitude,peer.longitude,latitude,longitude)}
+  }
+  
+  /**
+   * 
+   */
+  async closestPeer(providers) {
+    let all = [];
+    const address = await getAddress();
+    const peerLoc = await this.getCoordinates(address);
+    
+    for (const provider of providers) {
+      all.push(this.getDistance(peerLoc, provider));
+    }
+    
+    all = await Promise.all(all);
+    
+    const closestPeer = all.reduce((p, c) => {
+      console.log(c);
+      if (c.distance < p || p === 0) return c.provider;
+    }, 0);
+    
+    return closestPeer;
+  }
+  
+  /**
+   * 
+   */
+  async providersFor(hash) {
+    return this.providerMap.get(hash);
+  }  
+  
+  /**
+   * 
+   */  
+  async addProvider(address, hash) {
+    let providers = [];
+    if (this.providerMap.has(hash)) providers = this.providerMap.get(hash);
+      
+    providers = new Set([...providers, address]);
+    this.providerMap.set(hash, providers);
+    return providers;
+  }
+  
+  
+}
+
+class Peernet {
+  constructor(discoRoom) {    
+    this.dht = new DhtEarth();
+    this.discoRoom = discoRoom;
+    this.protocol = this.discoRoom.config.api.protocol;
+    this.port = this.discoRoom.config.api.port;
+    
     return this
+  }
+  
+  get providerMap() {
+    return this.dht.providerMap
   }
   
   get clientMap() {
@@ -355,69 +498,131 @@ class Peernet {
   
   get peerMap() {
     return this.discoRoom.peerMap
-  }  
+  }
   
-  async getDistance(provider) {
-    const request = `https://tools.keycdn.com/geo.json?host=${provider.address}`;
-    let response = await fetch(request);
-    response = response.json();
-    console.log(response);
+  get addProvider() {
+    return this.dht.addProvider
   }
   
   async providersFor(hash) {
-    let providers = this.providerMap.get(hash);
+    let providers = await this.dht.providersFor(hash);
     if (!providers || providers.length === 0) {
       await this.walk(hash);
-      providers = this.providerMap.get(hash);
+      providers = await this.dht.providersFor(hash);
+      if (!providers || providers.length === 0) {
+        await this.route(hash, 'has');
+        providers = await this.dht.providersFor(hash);
+      }
     }
-    
-    let all = [];
-    
-    for (const provider of providers) {
-      all.push(this.getDistance(provider));
-    }
-    
-    all = await Promise.all(all);
-    
-    const closestPeer = all.reduce((p, c) => {
-      if (c.distance < p || p === 0) return c;
-    }, 0);
-    
-    // closestPeer
-    // await connection()
+    return providers
   }
   
   async walk(hash) {
     // perform a walk but resolve first encounter
     if (hash) {
-      for (const entry of this.clientMap.entries()) {
-        console.log(entry);
-        console.log(entry[1].client.protocol);
-        const result = await entry[1].request({url: 'has', params: { hash }});
-        console.log(result);
-        if (result) {
-          let providers = [];
-          if (this.providerMap.has(hash)) {
-            providers = this.providerMap.get(hash);
-          }
-          providers.push(entry[1]);
-          this.providerMap.set(hash, providers);
-          if (!this.walking) this.walk();
-          return this.peerMap.get(entry[0])
+      for (const [peerID, clients] of this.clientMap.entries()) {
+        const client = clients[this.protocol];
+        console.log(client);
+        if (client !== undefined) {
+          const result = await client.request({url: 'has', params: { hash }});
+          console.log({result});
+          if (result && result.value || typeof result === 'boolean' && result) {
+            const address = this.peerMap.get(peerId).reduce((p, c) => {
+              const {address, protocol} = parseAddress(c);
+              if (protocol === this.protocol) return c
+              return p
+            }, null);
+            this.addProvider(address, hash);
+            return this.peerMap.get(address)
+          }  
         }
+        
       }      
     }
     
     this.walking = true;    
-    for (const entry of this.clientMap.entries()) {
-      entry[0].request({url: 'ls', params: {}});
+    for (const [peerID, clients] of this.clientMap.entries()) {
+      const client = clients[this.protocol];
+      if (client) await client.request({url: 'ls', params: {}});
+      // TODO: 
     }
     this.walking = false;
   }
    
-  get(contentHash) {
-    this.providersFor(contentHash);
+  async get(hash) {
+    let providers = await this.providersFor(hash);
+    if (!providers || providers.length === 0) throw `nothing found for ${hash}`
+    const closestPeer = await this.dht.closestPeer(providers);
+    console.log({closestPeer});
+    const { protocol, port, address, peerId } = parseAddress(closestPeer);    
+    let client;
+    if (this.clientMap.has(peerId)) {
+      client = this.clientMap.get(peerId);
+      client = client[protocol];
+    }
+    
+    if (!client) {
+       try {
+         client = await clientConnection({port, protocol, address});  
+       } catch (e) {
+         this.route(hash, 'get');
+         console.log({e});
+         return
+       } finally {
+         
+       }
+    }
+    
+    if (client) {
+      const data = {url: 'get', params: {hash}};
+      try {
+        const requested = await client.request(data);
+      } catch (e) {
+        console.log({e});
+      }
+      console.log({requested});  
+    }
+// a request is client.on & client.send combined
+    
+    
+    // connection.send({url: 'get'})
     // this.closestPeer()
+  }
+  
+  async route(hash, type = 'has') {
+    console.log({hash});
+    const protocol = this.protocol;
+    for (const [peerId, clients] of this.clientMap.entries()) {      
+      let client = clients[protocol];
+      if (!client) client = clients['disco-room'];
+      console.log({client, clients});
+      if (peerId !== this.discoRoom.peerId && client) {
+        let result = await client.request({url: 'route', params: { type, protocol, hash, peerId: this.discoRoom.peerId, from: this.discoRoom.peerId }});  
+        
+        const address = result.addressBook.reduce((p, c) => {
+          const {address, protocol} = parseAddress(c);
+          if (protocol === this.protocol) return c
+          return p
+        }, null);
+        
+        if (type === 'has') {
+          if (result.has) {
+            this.addProvider(address, hash);
+          }
+        } else if (type === 'get') {
+          if (result.value) {
+            this.addProvider(address, hash);
+          }
+          
+        }
+        
+        console.log({ result });
+        return result.value
+      }
+      
+      
+    }
+    return
   }
   
   put() {
@@ -472,17 +677,50 @@ class LeofcoinApi {
   }
   
   async start(config = {}) {
-    // spin up services
-    try {      
-      this.discoStar = await new DiscoStar(config);  
-    } catch (e) {
-      console.warn(`failed loading disco-star`);
-    }
+    // spin up services    
+    this.address = await getAddress();
+    Object.defineProperty(this, 'peerId', {
+      value: config.identity.peerId,
+      writable: false
+    });
     
-    this.discoRoom = await new DiscoRoom(config);
-    this.peernet = new Peernet(this.discoRoom);
-    return
-    // this.dht = new SimpleDHT(this.peernet)
+    const addressBook = [];
+    if (config.discovery.star) addressBook.push(`${this.address}/${config.discovery.star.port}/${config.discovery.star.protocol}/${this.peerId}`);
+    if (config.api) addressBook.push(`${this.address}/${config.api.port}/${config.api.protocol}/${this.peerId}`);
+    if (config.gateway) addressBook.push(`${this.address}/${config.gateway.port}/${config.gateway.protocol}/${this.peerId}`);
+    
+    this.addressBook = addressBook;
+    
+    if (config.discovery.star) {
+      try {
+        this.discoStar = await new DiscoStar({
+          port: config.discovery.star.port,
+          protocol: config.discovery.star.protocol,
+          peerId: config.identity.peerId,
+          protocols: [
+            config.api,
+            config.gateway  
+          ]
+        });
+        if (!this.discoStar) addressBook.shift();
+        
+        // this.apiServer = await new ApiServer(config)
+      } catch (e) {
+        console.warn(`failed loading disco-star`);
+        // remove disco-star from addressBook
+        addressBook.shift();
+      }    
+      
+      Object.defineProperty(this, 'addressBook', {
+        value: addressBook,
+        writable: false
+      });
+      await new DiscoServer(config.api);
+      this.discoRoom = await new DiscoRoom(config);
+      this.peernet = new Peernet(this.discoRoom, this.discoStar);
+      return
+      // this.dht = new SimpleDHT(this.peernet)
+    }
   }
   // 
   // async request(multihash) {
@@ -498,7 +736,7 @@ class LeofcoinApi {
     if (!hash) throw expected(['hash: String'], { hash })
     let data;
     try {
-      data = await blockStore.get(hash);
+      data = await blocksStore.get(hash);
     } catch (e) {
       data = await this.request(hash);
     }
@@ -521,24 +759,41 @@ class LeofcoinApi {
   }
   
   async get(hash) {
-    const providers = await this.peernet.providersFor(hash);
+    let data;
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blockStore.get(hash)
+    try {
+      data = await globalThis.blocksStore.get(hash + 'e');
+      console.log({data});
+    } catch (e) {
+      if (!data) {
+        const providers = await this.peernet.providersFor(hash);
+        console.log({providers});
+        if (providers && providers.length > 0) {
+          data = this.peernet.get(hash);
+          console.log(data);
+          blocksStore.put(hash, data);
+        }
+        
+      }  
+    }
+    
+    
+    return data
   }
   
   async put(hash, data) {
     if (!hash || !data) throw expected(['hash: String', 'data: Object', 'data: String', 'data: Number', 'data: Boolean'], { hash, data })
-    return await blockStore.put(hash, data)
+    return await blocksStore.put(hash, data)
   }
   
   async rm(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blockStore.remove(hash)
+    return await blocksStore.remove(hash)
   }
   
   async ls(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blockStore.ls(hash)
+    return await blocksStore.ls(hash)
   }
 }
 

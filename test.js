@@ -26,6 +26,9 @@ console.log(c);
   
   const qr = mm.account.export('password')
   console.log(qr);
+  
+  let hello = await mm.get('hello')
+  console.log({hello});
 })
 // (async () => {
 //   try {

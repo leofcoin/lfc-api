@@ -2,9 +2,10 @@ import config from './api/config'
 import account from './api/account'
 import init from './api/init';
 import peernet from './api/peernet';
-import { expected } from './utils.js';
+import { expected, getAddress } from './utils.js';
 import DiscoStar from 'disco-star';
 import DiscoRoom from 'disco-room';
+import DiscoServer from 'disco-server';
 
 class SimpleDHT {
   constructor(config, discoRoom) {
@@ -40,17 +41,56 @@ export default class LeofcoinApi {
   }
   
   async start(config = {}) {
-    // spin up services
-    try {      
-      this.discoStar = await new DiscoStar(config)  
-    } catch (e) {
-      console.warn(`failed loading disco-star`)
-    }
+    // spin up services    
+    this.address = await getAddress()
+    Object.defineProperty(this, 'peerId', {
+      value: config.identity.peerId,
+      writable: false
+    })
     
-    this.discoRoom = await new DiscoRoom(config)
-    this.peernet = new peernet(this.discoRoom);
-    return
-    // this.dht = new SimpleDHT(this.peernet)
+    const addressBook = []
+    if (config.discovery.star) addressBook.push(`${this.address}/${config.discovery.star.port}/${config.discovery.star.protocol}/${this.peerId}`)
+    if (config.api) addressBook.push(`${this.address}/${config.api.port}/${config.api.protocol}/${this.peerId}`)
+    if (config.gateway) addressBook.push(`${this.address}/${config.gateway.port}/${config.gateway.protocol}/${this.peerId}`)
+    
+    this.addressBook = addressBook
+    
+    if (config.discovery.star) {
+      try {
+        this.discoStar = await new DiscoStar({
+          port: config.discovery.star.port,
+          protocol: config.discovery.star.protocol,
+          peerId: config.identity.peerId,
+          protocols: [
+            config.api,
+            config.gateway  
+          ]
+        });
+        if (!this.discoStar) addressBook.shift()
+        
+        // this.apiServer = await new ApiServer(config)
+      } catch (e) {
+        console.warn(`failed loading disco-star`)
+        // remove disco-star from addressBook
+        addressBook.shift()
+      }    
+      
+      Object.defineProperty(this, 'addressBook', {
+        value: addressBook,
+        writable: false
+      })
+      await new DiscoServer(config.api, {
+        has: this._onhas.bind(this)
+      })
+      this.discoRoom = await new DiscoRoom(config)
+      this.peernet = new peernet(this.discoRoom, this.discoStar);
+      return
+      // this.dht = new SimpleDHT(this.peernet)
+    }
+  }
+  
+  _onhas(params, response) {
+    console.log(params);
   }
   // 
   // async request(multihash) {
@@ -66,7 +106,7 @@ export default class LeofcoinApi {
     if (!hash) throw expected(['hash: String'], { hash })
     let data;
     try {
-      data = await blockStore.get(hash)
+      data = await blocksStore.get(hash)
     } catch (e) {
       data = await this.request(hash)
     }
@@ -89,23 +129,40 @@ export default class LeofcoinApi {
   }
   
   async get(hash) {
-    const providers = await this.peernet.providersFor(hash)
+    let data;
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blockStore.get(hash)
+    try {
+      data = await globalThis.blocksStore.get(hash + 'e')
+      console.log({data});
+    } catch (e) {
+      if (!data) {
+        const providers = await this.peernet.providersFor(hash)
+        console.log({providers});
+        if (providers && providers.length > 0) {
+          data = this.peernet.get(hash)
+          console.log(data);
+          blocksStore.put(hash, data)
+        }
+        
+      }  
+    }
+    
+    
+    return data
   }
   
   async put(hash, data) {
     if (!hash || !data) throw expected(['hash: String', 'data: Object', 'data: String', 'data: Number', 'data: Boolean'], { hash, data })
-    return await blockStore.put(hash, data)
+    return await blocksStore.put(hash, data)
   }
   
   async rm(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blockStore.remove(hash)
+    return await blocksStore.remove(hash)
   }
   
   async ls(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blockStore.ls(hash)
+    return await blocksStore.ls(hash)
   }
 }

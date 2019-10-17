@@ -24,10 +24,14 @@ const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-room',
+    interval: 10000,
     port: 5000
   }
 }  
 
+const DEFAULT_NODE_API_CONFIG = {
+  
+}
 
 const DEFAULT_CONFIG = {
   discovery: {
