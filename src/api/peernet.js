@@ -35,7 +35,7 @@ export default class Peernet {
       await this.walk(hash)
       providers = await this.dht.providersFor(hash)
       if (!providers || providers.length === 0) {
-        await this.route(hash, 'has')
+        await this.walk(hash)
         providers = await this.dht.providersFor(hash)
       }
     }
@@ -45,16 +45,17 @@ export default class Peernet {
   async walk(hash) {
     // perform a walk but resolve first encounter
     if (hash) {
-      for (const [peerID, clients] of this.clientMap.entries()) {
-        const client = clients[this.protocol]
-        console.log(client);
-        if (client !== undefined) {
+      for (const [peerID, peer] of this.peerMap.entries()) {
+        if (peer !== undefined) {
           const onerror = error => {
             
           }
           let result;
           try {
-               result = await client.request({url: 'has', params: { hash }})
+           peer.send(JSON.stringify({
+             method: 'has',
+             hash
+           }))
           } catch (error) {
             console.log({error});
           } finally {
@@ -127,6 +128,28 @@ export default class Peernet {
   
   async route(hash, type = 'has') {
     console.log({hash});
+    console.log(this.discoRoom.availablePeers);
+    const peers = []
+    let peer;
+    for (const peer of  this.discoRoom.peerMap.values()) {
+      peers.push(peer)
+    }
+    if (peers.length === 0) {
+      for (const peer of  this.discoRoom.availablePeers.values()) {
+        peers.push(peer)
+      }  
+      if (peers.length > 0) peer = await this.discoRoom.dial(peers[0])
+      peer = peer.peer
+      
+    }
+    console.log(peer);
+    peer.on('data', data => {
+      console.log(data);
+    })
+    peer.send(JSON.stringify({
+      method: 'has',
+      hash
+    }))
     const protocol = this.protocol
     for (const [peerId, clients] of this.clientMap.entries()) {      
       let client = clients[protocol]
@@ -141,8 +164,8 @@ export default class Peernet {
           client = await clientConnection({ port, address, protocol })
         }
       }
-      if (!client) client = protocols['disco-room']
-      console.log({client, clients});
+      // if (!client) client = protocols['disco-room']
+      // console.log({client, clients});
       if (peerId !== this.discoRoom.peerId && client) {
         let result = await client.request({url: 'route', params: { type, protocol, hash, peerId: this.discoRoom.peerId, from: this.discoRoom.peerId }})  
         

@@ -3,9 +3,7 @@ import account from './api/account'
 import init from './api/init';
 import peernet from './api/peernet';
 import { expected, getAddress } from './utils.js';
-import DiscoStar from 'disco-star';
 import DiscoRoom from 'disco-room';
-import DiscoServer from 'disco-server';
 
 class SimpleDHT {
   constructor(config, discoRoom) {
@@ -22,7 +20,6 @@ class SimpleDHT {
 }
 export default class LeofcoinApi {
   get connectionMap() {
-    console.log(this.discoStar.connectionMap.entries());
     console.log(this.discoRoom.connectionMap.entries());
     return this.discoRoom.connectionMap
   }
@@ -54,48 +51,12 @@ export default class LeofcoinApi {
     Object.defineProperty(this, 'peerId', {
       value: config.identity.peerId,
       writable: false
-    })
+    })    
     
-    const addressBook = []
-    if (config.discovery.star) addressBook.push(`${this.address}/${config.discovery.star.port}/${config.discovery.star.protocol}/${this.peerId}`)
-    if (config.api) addressBook.push(`${this.address}/${config.api.port}/${config.api.protocol}/${this.peerId}`)
-    if (config.gateway) addressBook.push(`${this.address}/${config.gateway.port}/${config.gateway.protocol}/${this.peerId}`)
-    
-    this.addressBook = addressBook
-    
-    await new DiscoServer(config.api, {
-      has: this._onhas.bind(this),
-      route: this._onRoute.bind(this)
-    })
-    if (config.discovery.star) {
-      try {
-        this.discoStar = await new DiscoStar({
-          port: config.discovery.star.port,
-          protocol: config.discovery.star.protocol,
-          peerId: config.identity.peerId,
-          protocols: [
-            config.api,
-            config.gateway  
-          ]
-        });
-        if (!this.discoStar) addressBook.shift()
-        
-        // this.apiServer = await new ApiServer(config)
-      } catch (e) {
-        console.warn(`failed loading disco-star`)
-        // remove disco-star from addressBook
-        addressBook.shift()
-      }    
-      
-      Object.defineProperty(this, 'addressBook', {
-        value: addressBook,
-        writable: false
-      })
-      this.discoRoom = await new DiscoRoom(config)
-      this.peernet = new peernet(this.discoRoom, this.discoStar);
-      return
+    this.discoRoom = await new DiscoRoom(config)
+    this.peernet = new peernet(this.discoRoom);
+    return
       // this.dht = new SimpleDHT(this.peernet)
-    }
   }
   
   routedRequest(connection, message, response) {

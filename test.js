@@ -27,8 +27,10 @@ console.log(c);
   const qr = mm.account.export('password')
   console.log(qr);
   
-  let hello = await mm.get('hello')
-  console.log({hello});
+  setTimeout(async function () {
+    let hello = await mm.get('hello')
+    console.log({hello});
+  }, 10000);
 })
 // (async () => {
 //   try {

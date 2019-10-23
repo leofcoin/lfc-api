@@ -2,200 +2,127 @@
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
+var PeerInfo = _interopDefault(require('disco-peer-info'));
 var connection = _interopDefault(require('socket-request-client'));
 var PubSub = _interopDefault(require('little-pubsub'));
 var ip = require('ip');
-
-// import allSettled from 'promise.allSettled'
+var Peer = _interopDefault(require('simple-peer'));
 
 const wss = typeof window !== 'undefined';
 
-class DiscoRoom {
-  get peers() {
-    const peers = [];
-    if (this.peerMap.size > 0) {
-      for (const entry of this.peerMap.entries()) {
-        // family/address/port/id
-        peers.push(entry[1]);
-      }
-    }
-    return peers;
-  }
-  
-  
-  
-  get protocol() {
-    return this.config.discovery.star.protocol
-  }
-  get peerId() {
-    return this.config.identity.peerId;
-  }
-  
-  addProto(proto, fn) {
-    console.log(proto);
-    this.protos[proto] = fn;
-  }
+class DiscoBase {
   constructor(config = {}) {
+    this.config = config;    
     this.pubsub = new PubSub();
-    this.config = config;
-    this.clients = [];
+    
+    if (!this.config.discovery || !this.config.discovery.peers) throw new Error('expected config.discovery.peers to be defined')
+    if (!this.config.identity || !this.config.identity.peerId) throw new Error('expected config.identity.peerId to be defined')
+    this.protocols = ['disco-room'];
+    // star clients
     this.clientMap = new Map();
+    
     this.peerMap = new Map();
-    this.providerMap = new Map();
     
     this._onJoin = this._onJoin.bind(this);
     this._onLeave = this._onLeave.bind(this);
     this._onError = this._onError.bind(this);
     this._onRoute = this._onRoute.bind(this);
-    
-    this.protos = {
-      'disco-room': async message => {
-          if (message.from === this.peerId) return;
-          
-          if (!message.peers) {
-            if (this.clientMap.has(message.from)) {
-              const connections = this.clientMap.get(message.from);
-              const connection = connections[message.protocol || message.type];
-              console.log(connection);
-              if (connection && connection.connected) {
-                connection.send({
-                  url: 'route', status: 200,
-                  params: {
-                    peerId: this.peerId,
-                    from: this.peerId,
-                    to: message.peerId,
-                    peers: this.peers
-                  }
-                });    
-              } else {
-                const addresses = this.peerMap.get(message.from);
-                const address = addresses.reduce((p, c) => {
-                  const { protocol, port, address, peerId } = m.parseAddress(c);
-                  if (protocol === message.protocol) return c;
-                  return p;
-                }, null);
-                await dial(address);
-                const connections = this.peerMap.get(message.from);                                
-                const connection = connections[message.protocol || message.type];
-                if (connection && connection.connected) {
-                  connection.send({
-                    url: 'route', status: 200,
-                    params: {
-                      peerId: this.peerId,
-                      from: this.peerId,
-                      to: message.peerId,
-                      peers: this.peers
-                    }
-                  });    
-                }
-              }
-              
-            }
-          } else {
-            console.log({addressBook});
-            for (const addressBook of message.peers) {
-              const {peerId} = this.parseAddress(addressBook[0]);
-              if (!this.peerMap.has(peerId)) {
-                try {
-                  const address = addressBook.reduce((p, c) => {
-                    const { protocol, port, address } = this.parseAddress(c);
-                    if (protocol === this.config.discovery.star.protocol) return { protocol, port, address };
-                    return p;
-                  }, null);
-                  if (address) {
-                    await this.dialPeer(peerId, address);
-                    console.log('dial success');
-                    this.peerMap.set(peerId, addressBook);  
-                  }
-                  
-                } catch (e) {
-                    console.warn({e});      
-                }
-              }
-            }
-          }
-          return
-      }
-    };
-    this.proto = async message => {
-      console.log({message});
-      const proto = this.protos[message.protocol || message.type];
-      if (!proto) return console.warn('unimplemented protocol: ' + message.protocol);
-      return await proto(message)
-      
-    };
-    return this._init();
-  }
+    this._onDial = this._onDial.bind(this);
+  }  
   
   isDomain(address) {
     if (ip.toLong(address) === 0) return true;
     return false;
   }
   
-  async connect({peerId, port, address, protocol}) {
+  async connect({peerId, port, address, protocol}) {    
     if (this.isDomain(address) && !port) port = 8080;
+    console.log('conn');
     const client = await connection({port, address, protocol, peerId, wss});
-    console.log('connected', client);
+    console.log(client);
     return {client, peerId, protocol}
   }
   
-  async allSettled (array, unsettled = []) {
-    const promises = array.map(peerInfo => this.connect(peerInfo));
-    try {
-      const settled = await Promise.all(promises);
-      return settled
-    } catch (e) {
-      if (array.length > 0) return this.allSettled(array.filter(a => a.peerId !== e.peerId), unsettled)
-      return settled
+  peerDiscovered(address) {
+    this.pubsub.publish('peer:discoverd', address);
+  }
+  
+  peerConnected(address) {
+    this.pubsub.publish('peer:connected', address);
+  }
+  
+  async connectStar(peerInfo) {
+    if (typeof peerInfo === 'string') peerInfo = new PeerInfo().fromString(peerInfo);
+    
+    const {port, address, protocols, peerId} = peerInfo;
+    const protoIndex = protocols.indexOf(this.config.discovery.star.protocol);
+    const protocol = protocols[protoIndex];
+    
+    const client = await connection({port, address, protocol, peerId, wss});
+    client.on('error', this._onError);
+    client.on('join', this._onJoin);
+    client.on('leave', this._onLeave);
+    client.on('route', this._onRoute); 
+    client.on('dial', this._onDial); 
+    this.clientMap.set(peerId, client);
+    
+    const addresses = await client.request({url: 'join', params: { peerId: this.config.identity.peerId } });
+    for (const address of addresses) {
+      const peerInfo = new PeerInfo();
+      peerInfo.fromEncoded(Buffer.from(address, 'hex'));
+      if (peerInfo.protocols[this.config.discovery.star.protocol]) {
+        await this.connectStar(peerInfo);
+      } else {
+        this.peerDiscovered(peerInfo);
+      }
+      
     }
   }
   
   async _init() {
-    if (!this.config.discovery || !this.config.discovery.peers) throw new Error('expected config.discovery.peers to be defined')
-    if (!this.config.identity || !this.config.identity.peerId) throw new Error('expected config.identity.peerId to be defined')
-    const all = [];
     for (const star of this.config.discovery.peers) {
-      const { port, address, protocol, peerId } = this.parseAddress(star);
-      all.push({peerId, port, address, protocol});
-    }
-    for (const { peerId, client, protocol } of await this.allSettled(all)) {
-      if (peerId) {
-        if (client.client.readyState !== 3) {
-          this.addClient({peerId, protocol, client});
-          let star = this.config.discovery.star;
-          if (!star) star = { protocol: 'disco-room', port: 8080 };
-          const addressBook = [this.config.api, this.config.gateway, star];
-          const addresses = await client.request({url: 'join', params: { peerId: this.config.identity.peerId, addressBook } });
-          console.log({addresses});
-          addresses.push([
-            'star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp',
-            'star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'
-          ]);
-          for (const addressBook of addresses) {
-            const {peerId} = this.parseAddress(addressBook[0]);
-            try {
-              const address = addressBook.reduce((p, c) => {
-                const { protocol, port, address } = this.parseAddress(c);
-                if (protocol === this.config.discovery.star.protocol) return { protocol, port, address };
-                return p;
-              }, null);
-              if (address) {
-                await this.dialPeer(peerId, address);
-                console.log('dial success');
-                this.peerMap.set(peerId, addressBook);  
-              }
-              
-            } catch (e) {
-                console.warn({e, 'error': true});      
-            }  
-          }
-          client.on('error', this._onError);
-          client.on('join', this._onJoin);
-          client.on('leave', this._onLeave);
-          client.on('route', this._onRoute); 
-        }  
+      try {
+        const peerInfo = new PeerInfo();
+        peerInfo.fromString(star);
+        const { port, address, protocols, peerId } = peerInfo.get();
+        const protoIndex = protocols.indexOf(this.config.discovery.star.protocol);
+        const protocol = protocols[protoIndex];
+        
+        const client = await connection({port, address, protocol, peerId, wss});
+        this.clientMap.set(peerInfo.peerId, client);
+      } catch (e) {
+        this.pubsub.publish('error', e);
       }
-      return this
+    }
+    for (const client of this.clientMap.values()) {
+      if (client.client.readyState !== 3) {
+        // fromDecoded({
+        //   address: this.address
+        // })
+        const address = new PeerInfo();
+        address.fromDecoded({
+          protocols: this.protocols,
+          peerId: this.peerId,
+          address: '127.0.0.1'
+        });
+        address.encode();
+        const addresses = await client.request({url: 'join', params: { address: address.encoded.toString('hex') } });
+        client.on('error', this._onError);
+        client.on('join', this._onJoin);
+        client.on('leave', this._onLeave);
+        client.on('route', this._onRoute); 
+        client.on('dial', this._onDial); 
+        
+        for (const address of addresses) {
+          const peerInfo = new PeerInfo();
+          peerInfo.fromEncoded(Buffer.from(address, 'hex'));
+          if (peerInfo.protocols[this.config.discovery.star.protocol]) {
+            await this.connectStar(peerInfo);
+          } else {
+            this.peerDiscovered(peerInfo);
+          }
+        }
+      }
     }
     
     process.on('SIGINT', async (m) => {
@@ -209,71 +136,18 @@ class DiscoRoom {
       console.log("Caught interrupt signal");
       console.log(m);
       // await star.stop();
-      for (const [peerId, clients] of this.clientMap.entries()) {
-        const client = clients[this.config.discovery.star.protocol];
-        if (client) await client.request({url: 'leave', params: {peerId: this.config.identity.peerId} });
-      }
+      await this.beforeExit();
       setTimeout(async () => {
         process.exit();
       }, 50);
     }); 
-    
-    return this
   }
   
-  parseAddress(address) {    
-    const parts = address.split('/');
-    if (this.isDomain(parts[0]) && isNaN(parts[1])) {
-      return {
-        address: parts[0],
-        port: 8080,
-        protocol: parts[1],
-        peerId: parts[2]
-      }
+  async beforeExit() {
+    for (const [peerId, client] of this.clientMap.entries()) {
+      const client = client[this.config.discovery.star.protocol];
+      if (client) await client.request({url: 'leave', params: {peerId: this.config.identity.peerId} });
     }
-    return {
-      address: parts[0],
-      port: Number(parts[1]),
-      protocol: parts[2],
-      peerId: parts[3]
-    }
-  }
-  
-  async dial(_address) {
-    console.log(_address);
-    const { peerId, protocol, address, port } = this.parseAddress(_address);
-    return this.dialPeer(peerId, {port, protocol, address})
-  }
-  
-  async dialPeer(peerId, { port, protocol, address }, type) {
-    console.log(port, address);
-    if (this.isDomain(address) || typeof window === 'undefined') {
-      if (!type) {
-        const client = await connection({ port, protocol, address, wss, peerId });
-        client.on('join', this._onJoin);
-        client.on('leave', this._onLeave);
-        
-        this.addClient({peerId, protocol, client});
-      }
-      // TODO: get, set, ls      
-    } else {
-      if (!type) {
-        for (const [peerId, clients] of this.clientMap.entries()) {
-          const client = clients[this.config.discovery.star.protocol];
-          if (client) client.send({ url: 'route', params: {peerId: this.peerId, from: this.peerId, to: peerId, protocol}});
-        }
-      }
-      // TODO: get, set, ls
-    }
-    this.pubsub.publish('dial', peerId);
-    return
-  }
-  
-  addClient({peerId, protocol, client}) {
-    let clients = {};
-    if (this.clientMap.has(peerId)) clients = this.clientMap.get(peerId); 
-    clients[protocol] = client;
-    this.clientMap.set(peerId, clients);
   }
   
   async _onRoute(message) {
@@ -284,29 +158,19 @@ class DiscoRoom {
     
   }
   
-  async _onJoin({ peerId, addressBook }) {
+  async _onJoin({ peerId, address }) {
     // TODO: add limit to config
-    if (!this.peerMap.has(peerId) && this.peerMap.size < 25) {
+    if (!this.peerMap.has(peerId) && this.peerMap.size < 125) {
       try {
-        const address = addressBook.reduce((p, c) => {
-          const { protocol, port, address } = this.parseAddress(c);
-          if (protocol === this.config.discovery.star.protocol) return { protocol, port, address };
-          return p;
-        }, null);
-        if (address) {
-          await this.dialPeer(peerId, address);
-          console.log('dial success');
-          this.peerMap.set(peerId, addressBook);  
-        }
-        
+        // await this.dial(peerId, address)
+        const peerInfo = new PeerInfo();
+        peerInfo.fromEncoded(Buffer.from(address, 'hex'));
+        if (!this.peerMap.has(peerInfo.peerId)) this.peerDiscovered(peerInfo);
+        // this.peerMap.set(peerId, address);
       } catch (e) {
-        const {protocol, peerId, } = e;
-        for (const [peerId, clients] of this.clientMap.entries()) {
-          const client = clients[this.protocol];
-          client.send({ url: 'route', params: {peerId: this.peerId, from: this.peerId, to: peerId, protocol}});
-        }
+        
       }      
-      this.pubsub.publish('join', { peerId, addressBook });
+      this.pubsub.publish('join', address);
     }
   }
   
@@ -324,7 +188,135 @@ class DiscoRoom {
   
   _onError(error) {
     if (this.pubsub.subscribers) return this.pubsub.publish('error', error)
-    console.error(error);
+    // console.error(error);
+  }
+}
+
+class DiscoRoom extends DiscoBase {
+  get peers() {
+    return this.peerMap.keys();
+  }  
+  
+  get protocol() {
+    return this.config.discovery.star.protocol
+  }
+  
+  get peerId() {
+    return this.config.identity.peerId;
+  }
+  
+  constructor(config = {}) {
+    super(config);
+    this.availablePeers = new Map();
+    return this._init();
+  }
+  
+  async _init() {
+    await super._init();
+    return this
+  }
+  
+  _onDial(params) {
+    const from = params.from;
+    if (params.to === this.peerId) {
+      if (!globalThis.wrtc) globalThis.wrtc = require('wrtc');
+      const peer = new Peer({wrtc});  
+      peer.once('connect', () => {
+        console.log(`connected to ${from}`);
+        this.peerMap.set(from, peer);
+      });
+      peer.once('signal', data => {
+        params.data = data;
+        params.to = params.from;
+        params.from = this.peerId;
+        for (const entry of this.clientMap.entries()) {
+          entry[1].send({url: 'answer', params: params});
+        }
+      });
+      
+      peer.signal(params.data);
+    }
+  }
+  
+  async que(entries) {
+    const request = entries.shift();
+    let data;
+    try {
+      data = await request;
+      if (data) return data
+    } catch (e) {
+      if (entries.length === 0) return null
+      return this.que(entries)
+    }
+    if (entries.length > 0) return this.que(entries)
+  }
+  
+  
+  dialRequest(from, to) {
+    return new Promise(async (resolve, reject) => {
+      if (!globalThis.wrtc) globalThis.wrtc = require('wrtc');
+      const peer = new Peer({ initiator: true, wrtc: wrtc });
+      peer.on('error', error => reject(error));
+      
+      peer.once('connect', () => resolve({peerId: to, peer}));
+      peer.once('signal', async data => {
+        const values = this.clientMap.values();
+        let success;
+        for await (const client of values) {
+          try {
+            if (!success) {
+              success = await new Promise((resolve, reject) => {
+                client.on('answer', params => {
+                  // this.peerMap.set(params.from, peer)
+                  peer.signal(params.data);
+                  resolve(true);
+                });
+                client.send({url: 'dial', params: { data, from, to }});  
+              });
+            }
+            
+          } catch (e) {
+            
+          }
+        }
+        
+      });
+      
+      
+    });
+  }
+  
+  
+  async dial(info) {
+    if (info.peerId === this.peerId) return;
+    
+    const result = await this.dialRequest(this.peerId, info.peerId);
+    console.log(`connected to ${info.peerId}`);
+    this.peerConnected(result.peerId, result.peer);
+    return result
+  }
+
+  peerDiscovered(peerInfo) {
+    if (this.peerId === peerInfo.peerId) return
+    if (this.availablePeers.has(peerInfo.peerId)) return;
+    this.availablePeers.set(peerInfo.peerId, peerInfo);
+    console.log(peerInfo.peerId + ' discoverd');
+    
+    super.peerDiscovered(peerInfo);
+    this.dial(peerInfo);
+    if (this.autoDial) this.dial(info);
+  }
+  
+  peerConnected(info, peer) {
+    if (info.peerId) this.peerMap.set(info.peerId, peer);
+    super.peerConnected(info);
+  }
+  
+  async beforeExit() {
+    await super.beforeExit();
+    for (const peer of this.peerMap.values()) {
+      peer.send('leave');      
+    }
   }
 }
 

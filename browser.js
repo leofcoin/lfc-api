@@ -8,9 +8,7 @@ var fetch = _interopDefault(require('node-fetch'));
 var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
 var clientConnection = _interopDefault(require('socket-request-client'));
-var DiscoStar = _interopDefault(require('disco-star'));
 var DiscoRoom = _interopDefault(require('disco-room'));
-var DiscoServer = _interopDefault(require('disco-server'));
 
 var config = {
   get: async (key) => {
@@ -35,8 +33,7 @@ const DEFAULT_QR_OPTIONS = {
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // peer addresses to discover other peers
-    peers: ['star.leofcoin.org/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp',
-            'star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+    peers: ['star.leofcoin.org/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star',],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
@@ -46,8 +43,7 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
 
 const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // peer addresses to discover other peers
-  peers: ['star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp',
-          'star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp'],
+  peers: ['star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-room',
@@ -368,10 +364,15 @@ var versions = {
 	}
 },
 	"1.0.25": {
+	discovery: {
+		peers: [
+			"star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-room"
+		]
+	}
 }
 };
 
-var version = "1.0.24";
+var version = "1.0.25";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -529,7 +530,7 @@ class Peernet {
       await this.walk(hash);
       providers = await this.dht.providersFor(hash);
       if (!providers || providers.length === 0) {
-        await this.route(hash, 'has');
+        await this.walk(hash);
         providers = await this.dht.providersFor(hash);
       }
     }
@@ -539,28 +540,20 @@ class Peernet {
   async walk(hash) {
     // perform a walk but resolve first encounter
     if (hash) {
-      for (const [peerID, clients] of this.clientMap.entries()) {
-        const client = clients[this.protocol];
-        console.log(client);
-        if (client !== undefined) {
+      for (const [peerID, peer] of this.peerMap.entries()) {
+        if (peer !== undefined) {
           let result;
           try {
-               result = await client.request({url: 'has', params: { hash }});
+               peer.send(JSON.stringify({
+                 method: 'has',
+                 hash
+               }));
           } catch (error) {
             console.log({error});
           } finally {
             
           }
           console.log({result});
-          if (result && result.value || typeof result === 'boolean' && result) {
-            const address = this.peerMap.get(peerId).reduce((p, c) => {
-              const {address, protocol} = parseAddress$1(c);
-              if (protocol === this.protocol) return c
-              return p
-            }, null);
-            this.addProvider(address, hash);
-            return this.peerMap.get(address)
-          }  
         }
         
       }      
@@ -617,6 +610,28 @@ class Peernet {
   
   async route(hash, type = 'has') {
     console.log({hash});
+    console.log(this.discoRoom.availablePeers);
+    const peers = [];
+    let peer;
+    for (const peer of  this.discoRoom.peerMap.values()) {
+      peers.push(peer);
+    }
+    if (peers.length === 0) {
+      for (const peer of  this.discoRoom.availablePeers.values()) {
+        peers.push(peer);
+      }  
+      if (peers.length > 0) peer = await this.discoRoom.dial(peers[0]);
+      peer = peer.peer;
+      
+    }
+    console.log(peer);
+    peer.on('data', data => {
+      console.log(data);
+    });
+    peer.send(JSON.stringify({
+      method: 'has',
+      hash
+    }));
     const protocol = this.protocol;
     for (const [peerId, clients] of this.clientMap.entries()) {      
       let client = clients[protocol];
@@ -631,8 +646,8 @@ class Peernet {
           client = await clientConnection({ port, address, protocol });
         }
       }
-      if (!client) client = protocols['disco-room'];
-      console.log({client, clients});
+      // if (!client) client = protocols['disco-room']
+      // console.log({client, clients});
       if (peerId !== this.discoRoom.peerId && client) {
         let result = await client.request({url: 'route', params: { type, protocol, hash, peerId: this.discoRoom.peerId, from: this.discoRoom.peerId }});  
         
@@ -695,7 +710,6 @@ class Peernet {
 
 class LeofcoinApi {
   get connectionMap() {
-    console.log(this.discoStar.connectionMap.entries());
     console.log(this.discoRoom.connectionMap.entries());
     return this.discoRoom.connectionMap
   }
@@ -727,48 +741,12 @@ class LeofcoinApi {
     Object.defineProperty(this, 'peerId', {
       value: config.identity.peerId,
       writable: false
-    });
+    });    
     
-    const addressBook = [];
-    if (config.discovery.star) addressBook.push(`${this.address}/${config.discovery.star.port}/${config.discovery.star.protocol}/${this.peerId}`);
-    if (config.api) addressBook.push(`${this.address}/${config.api.port}/${config.api.protocol}/${this.peerId}`);
-    if (config.gateway) addressBook.push(`${this.address}/${config.gateway.port}/${config.gateway.protocol}/${this.peerId}`);
-    
-    this.addressBook = addressBook;
-    
-    await new DiscoServer(config.api, {
-      has: this._onhas.bind(this),
-      route: this._onRoute.bind(this)
-    });
-    if (config.discovery.star) {
-      try {
-        this.discoStar = await new DiscoStar({
-          port: config.discovery.star.port,
-          protocol: config.discovery.star.protocol,
-          peerId: config.identity.peerId,
-          protocols: [
-            config.api,
-            config.gateway  
-          ]
-        });
-        if (!this.discoStar) addressBook.shift();
-        
-        // this.apiServer = await new ApiServer(config)
-      } catch (e) {
-        console.warn(`failed loading disco-star`);
-        // remove disco-star from addressBook
-        addressBook.shift();
-      }    
-      
-      Object.defineProperty(this, 'addressBook', {
-        value: addressBook,
-        writable: false
-      });
-      this.discoRoom = await new DiscoRoom(config);
-      this.peernet = new Peernet(this.discoRoom, this.discoStar);
-      return
+    this.discoRoom = await new DiscoRoom(config);
+    this.peernet = new Peernet(this.discoRoom);
+    return
       // this.dht = new SimpleDHT(this.peernet)
-    }
   }
   
   routedRequest(connection, message, response) {

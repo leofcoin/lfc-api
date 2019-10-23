@@ -1,6 +1,6 @@
 {
   "name": "lfc-api",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "description": "",
   "main": "index.js",
   "browser": "browser.js",
@@ -26,16 +26,17 @@
   },
   "homepage": "https://github.com/leofcoin/lfc-api#readme",
   "dependencies": {
-    "disco-room": "^1.0.13",
-    "disco-star": "^1.0.20",
+    "disco-room": "^2.0.0-alpha.4",
+    "disco-server": "^1.0.3",
     "lfc-storage": "^1.4.1",
     "multi-wallet": "^1.2.3",
     "node-fetch": "^2.6.0",
-    "qrcode": "^1.4.2"
+    "qrcode": "^1.4.2",
+    "wrtc": "^0.4.2"
   },
   "devDependencies": {
     "browserify": "^16.5.0",
-    "rollup": "^1.24.0",
+    "rollup": "^1.25.1",
     "rollup-plugin-commonjs": "^9.3.4",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-modify": "^3.0.0",
