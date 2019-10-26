@@ -544,10 +544,10 @@ class Peernet {
         if (peer !== undefined) {
           let result;
           try {
-               peer.send(JSON.stringify({
-                 method: 'has',
-                 hash
-               }));
+           peer.send(JSON.stringify({
+             method: 'has',
+             hash
+           }));
           } catch (error) {
             console.log({error});
           } finally {
