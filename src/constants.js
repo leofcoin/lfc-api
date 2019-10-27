@@ -13,7 +13,13 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     peers: ['star.leofcoin.org/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star',],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
+      protocol: 'disco-star',
+      interval: 10000,    
+      port: 8080
+    },
+    room: {
       protocol: 'disco-room',
+      interval: 10000,
       port: 8080
     }
 }
@@ -23,6 +29,11 @@ const DEFAULT_NODE_DISCOVERY_CONFIG = {
   peers: ['star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
+    protocol: 'disco-star',
+    interval: 10000,
+    port: 5000
+  },
+  room: {
     protocol: 'disco-room',
     interval: 10000,
     port: 5000

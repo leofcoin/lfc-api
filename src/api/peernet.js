@@ -21,6 +21,10 @@ export default class Peernet {
     return this.discoRoom.clientMap
   }
   
+  get availablePeers() {
+    return this.discoRoom.availablePeers
+  }
+  
   get peerMap() {
     return this.discoRoom.peerMap
   }
@@ -44,8 +48,12 @@ export default class Peernet {
   
   async walk(hash) {
     // perform a walk but resolve first encounter
+    console.log('walking');
+    console.log(this.peerMap);
+    console.log(this.availablePeers);
     if (hash) {
       for (const [peerID, peer] of this.peerMap.entries()) {
+        console.log(peer);
         if (peer !== undefined) {
           const onerror = error => {
             
@@ -87,6 +95,7 @@ export default class Peernet {
   }
    
   async get(hash) {
+    console.log({hash});
     let providers = await this.providersFor(hash)
     if (!providers || providers.length === 0) throw `nothing found for ${hash}`
     const closestPeer = await this.dht.closestPeer(providers)
@@ -142,7 +151,7 @@ export default class Peernet {
       peer = peer.peer
       
     }
-    console.log(peer);
+    console.log({peer, peers});
     peer.on('data', data => {
       console.log(data);
     })

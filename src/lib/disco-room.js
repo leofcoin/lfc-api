@@ -6,7 +6,7 @@ var PeerInfo = _interopDefault(require('disco-peer-info'));
 var connection = _interopDefault(require('socket-request-client'));
 var PubSub = _interopDefault(require('little-pubsub'));
 var ip = require('ip');
-var Peer = _interopDefault(require('simple-peer'));
+var Peer$1 = _interopDefault(require('simple-peer'));
 
 const wss = typeof window !== 'undefined';
 
@@ -192,52 +192,101 @@ class DiscoBase {
   }
 }
 
+const send = peer => {
+  // if (!peer) throw 'Expected peer to be defined'
+  peer.send();
+
+};
+
+const dial = async peer => await offer(peer);
+
+const offer = peer => new Promise((resolve, reject) => {
+  const onSignal = async data => {
+    resolve(data);
+  };
+  peer.once('signal', onSignal);
+});
+
+const answer = (peer, data) => new Promise((resolve, reject) => {
+  peer.once('connect', () => {
+    console.log(`connected`);
+    resolve();
+  });
+
+  peer.signal(data);
+});
+
+const close = async peer => peer.destroy();
+
+var Peer = (peerInfo, signal) => {
+  if (!globalThis.wrtc) globalThis.wrtc = require('wrtc');
+  console.log({signal});
+  const peer = new Peer$1({ initiator: signal ? false : true, wrtc: wrtc });
+  // if (signal)
+  return {
+    send: data => send(peer),
+    dial: () => dial(peer),
+    answer: data => answer(peer, data),
+    on: (event, cb) => peer.on(event, cb),
+    once: (event, cb) => peer.once(event, cb),
+    signal: signal => peer.signal(signal),
+    close: () => close(peer)
+  }
+
+};
+
 class DiscoRoom extends DiscoBase {
   get peers() {
     return this.peerMap.keys();
-  }  
-  
+  }
+
   get protocol() {
     return this.config.discovery.star.protocol
   }
-  
+
   get peerId() {
     return this.config.identity.peerId;
   }
-  
+
   constructor(config = {}) {
     super(config);
     this.availablePeers = new Map();
     return this._init();
   }
-  
+
   async _init() {
     await super._init();
     return this
   }
-  
-  _onDial(params) {
+
+  async _onDial(params) {
     const from = params.from;
+    console.log(params);
     if (params.to === this.peerId) {
       if (!globalThis.wrtc) globalThis.wrtc = require('wrtc');
-      const peer = new Peer({wrtc});  
-      peer.once('connect', () => {
-        console.log(`connected to ${from}`);
-        this.peerMap.set(from, peer);
-      });
+      const peer = Peer(this.availablePeers.get(params.from), params.data);
+      // const offer = await peer.dial()
+      const keys = [...this.clientMap.keys()];
+      const client = this.clientMap.get(keys[0]);
+      // params.data = data
+      params.to = params.from;
+      params.from = this.peerId;
+      // console.log(offer);
+      // peer.once('connect', () => {
+      //   console.log(`connected to ${from}`);
+      //   this.peerMap.set(from, peer)
+      // })
       peer.once('signal', data => {
+        console.log(data);
         params.data = data;
-        params.to = params.from;
-        params.from = this.peerId;
-        for (const entry of this.clientMap.entries()) {
-          entry[1].send({url: 'answer', params: params});
-        }
+          client.send({url: 'answer', params: params});
+
       });
-      
+      // await peer.answer(params.data)
       peer.signal(params.data);
     }
   }
-  
+
   async que(entries) {
     const request = entries.shift();
     let data;
@@ -250,14 +299,14 @@ class DiscoRoom extends DiscoBase {
     }
     if (entries.length > 0) return this.que(entries)
   }
-  
-  
+
+
   dialRequest(from, to) {
     return new Promise(async (resolve, reject) => {
       if (!globalThis.wrtc) globalThis.wrtc = require('wrtc');
-      const peer = new Peer({ initiator: true, wrtc: wrtc });
+      const peer = Peer({ initiator: true, wrtc: wrtc });
       peer.on('error', error => reject(error));
-      
+
       peer.once('connect', () => resolve({peerId: to, peer}));
       peer.once('signal', async data => {
         const values = this.clientMap.values();
@@ -271,29 +320,44 @@ class DiscoRoom extends DiscoBase {
                   peer.signal(params.data);
                   resolve(true);
                 });
-                client.send({url: 'dial', params: { data, from, to }});  
+                client.send({url: 'dial', params: { data, from, to }});
               });
             }
-            
+
           } catch (e) {
-            
+
           }
         }
-        
+
       });
-      
-      
+
+
     });
   }
-  
-  
+
+  async clientAnswer(client, data, from, to) {
+    return new Promise((resolve, reject) => {
+      client.on('answer', params => resolve(params));
+      client.send({url: 'dial', params: { data, from, to }});
+    });
+  }
+
+
   async dial(info) {
     if (info.peerId === this.peerId) return;
-    
-    const result = await this.dialRequest(this.peerId, info.peerId);
+    const peer = Peer();
+    const offer = await peer.dial();
+    const keys = [...this.clientMap.keys()];
+    const client = this.clientMap.get(keys[0]);
+// console.log(offer);
+    // const data =
+    const data = await this.clientAnswer(client, offer, this.peerId, info.peerId);
+    console.log(data);
+    await peer.answer(data.data);
+    // const result = await this.dialRequest(this.peerId, info.peerId)
     console.log(`connected to ${info.peerId}`);
-    this.peerConnected(result.peerId, result.peer);
-    return result
+    this.peerConnected(info.peerId, peer);
+    return {peer, peerId: info.peerId}
   }
 
   peerDiscovered(peerInfo) {
@@ -301,21 +365,21 @@ class DiscoRoom extends DiscoBase {
     if (this.availablePeers.has(peerInfo.peerId)) return;
     this.availablePeers.set(peerInfo.peerId, peerInfo);
     console.log(peerInfo.peerId + ' discoverd');
-    
+
     super.peerDiscovered(peerInfo);
     this.dial(peerInfo);
     if (this.autoDial) this.dial(info);
   }
-  
+
   peerConnected(info, peer) {
     if (info.peerId) this.peerMap.set(info.peerId, peer);
     super.peerConnected(info);
   }
-  
+
   async beforeExit() {
     await super.beforeExit();
     for (const peer of this.peerMap.values()) {
-      peer.send('leave');      
+      peer.send('leave');
     }
   }
 }

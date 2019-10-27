@@ -37,6 +37,12 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-room',
+      interval: 10000,    
+      port: 8080
+    },
+    room: {
+      protocol: 'disco-room',
+      interval: 10000,
       port: 8080
     }
 };
@@ -46,6 +52,11 @@ const DEFAULT_NODE_DISCOVERY_CONFIG = {
   peers: ['star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
+    protocol: 'disco-star',
+    interval: 10000,
+    port: 5000
+  },
+  room: {
     protocol: 'disco-room',
     interval: 10000,
     port: 5000
@@ -369,10 +380,14 @@ var versions = {
 			"star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-room"
 		]
 	}
+},
+	"1.0.26": {
+	discovery: {
+	}
 }
 };
 
-var version = "1.0.25";
+var version = "1.0.26";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -390,7 +405,7 @@ var upgrade = async config => {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
-    if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23') {
+    if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23' || key === '1.0.26') {
       const defaultConfig = envConfig();
       config.discovery = defaultConfig.discovery;
     }
@@ -516,6 +531,10 @@ class Peernet {
     return this.discoRoom.clientMap
   }
   
+  get availablePeers() {
+    return this.discoRoom.availablePeers
+  }
+  
   get peerMap() {
     return this.discoRoom.peerMap
   }
@@ -539,8 +558,12 @@ class Peernet {
   
   async walk(hash) {
     // perform a walk but resolve first encounter
+    console.log('walking');
+    console.log(this.peerMap);
+    console.log(this.availablePeers);
     if (hash) {
       for (const [peerID, peer] of this.peerMap.entries()) {
+        console.log(peer);
         if (peer !== undefined) {
           let result;
           try {
@@ -569,6 +592,7 @@ class Peernet {
   }
    
   async get(hash) {
+    console.log({hash});
     let providers = await this.providersFor(hash);
     if (!providers || providers.length === 0) throw `nothing found for ${hash}`
     const closestPeer = await this.dht.closestPeer(providers);
@@ -624,7 +648,7 @@ class Peernet {
       peer = peer.peer;
       
     }
-    console.log(peer);
+    console.log({peer, peers});
     peer.on('data', data => {
       console.log(data);
     });

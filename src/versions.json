@@ -43,12 +43,16 @@
         "interval": 10000,
         "port": 5000
       }
-  }},
+    }
+  },
   "1.0.25": {
     "discovery": {
       "peers": [
         "star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-room"
       ]
     }
+  },
+  "1.0.26": {
+    "discovery": {}
   }
 }

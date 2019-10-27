@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/leofcoin/lfc-api#readme",
   "dependencies": {
-    "disco-room": "^2.0.0-alpha.4",
+    "disco-room": "^2.0.0-alpha.5",
     "disco-server": "^1.0.3",
     "lfc-storage": "^1.4.1",
     "multi-wallet": "^1.2.3",
@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "browserify": "^16.5.0",
-    "rollup": "^1.25.1",
+    "rollup": "^1.25.2",
     "rollup-plugin-commonjs": "^9.3.4",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-modify": "^3.0.0",
