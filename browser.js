@@ -36,7 +36,7 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     peers: ['star.leofcoin.org/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star',],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
-      protocol: 'disco-room',
+      protocol: 'disco-star',
       interval: 10000,    
       port: 8080
     },
@@ -246,15 +246,15 @@ const {readdirSync, mkdirSync} = require('fs');
 
 class LeofcoinStorage {
 
-  constructor(path) {
+  constructor(path, root = '.leofcoin') {
     this.root = homedir();
     if (readdirSync) try {
-      readdirSync(join(this.root, '.leofcoin'));
+      readdirSync(join(this.root, root));
     } catch (e) {
-      if (e.code === 'ENOENT') mkdirSync(join(this.root, '.leofcoin'));
+      if (e.code === 'ENOENT') mkdirSync(join(this.root, root));
       else throw e
     }
-    this.db = new LevelStore(join(this.root, '.leofcoin', path));
+    this.db = new LevelStore(join(this.root, root, path));
     // this.db = level(path, { prefix: 'lfc-'})
   }
   
@@ -377,7 +377,7 @@ var versions = {
 	"1.0.25": {
 	discovery: {
 		peers: [
-			"star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-room"
+			"star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star"
 		]
 	}
 },
@@ -769,6 +769,10 @@ class LeofcoinApi {
     
     this.discoRoom = await new DiscoRoom(config);
     this.peernet = new Peernet(this.discoRoom);
+    this.discoRoom.on('data', data => {
+      data = data.toString();
+      console.log(data);
+    });
     return
       // this.dht = new SimpleDHT(this.peernet)
   }

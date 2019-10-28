@@ -55,6 +55,10 @@ export default class LeofcoinApi {
     
     this.discoRoom = await new DiscoRoom(config)
     this.peernet = new peernet(this.discoRoom);
+    this.discoRoom.on('data', data => {
+      data = data.toString()
+      console.log({data});
+    })
     return
       // this.dht = new SimpleDHT(this.peernet)
   }

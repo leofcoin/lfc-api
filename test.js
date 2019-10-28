@@ -24,7 +24,7 @@ console.log(c);
   // const generated = await mm.account.generateProfile()
   // console.log(generated);
   
-  const qr = mm.account.export('password')
+  const qr = await mm.account.export('password')
   console.log(qr);
   
   setTimeout(async function () {
