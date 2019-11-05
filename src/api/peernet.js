@@ -2,14 +2,44 @@ import fetch from 'node-fetch';
 import { distanceInKmBetweenEarthCoordinates, parseAddress } from './../utils'
 import clientConnection from 'socket-request-client';
 import Dht from './dht-earth';
+import proto from './proto'
+import DiscoMessage from 'disco-message';
+import MultiWallet from 'multi-wallet';
 
+class DiscoData {
+  constructor(data) {
+    
+  }
+}
 export default class Peernet {
-  constructor(discoRoom) {    
+  constructor(discoRoom, protoCall) {
     this.dht = new Dht()
     this.discoRoom = discoRoom;
     this.protocol = this.discoRoom.config.api.protocol
     this.port = this.discoRoom.config.api.port
+    this.protoCall = protoCall;
     
+    this.discoRoom.on('data', data => {
+      console.log('incoming');
+      console.log({data});
+      
+      let message = new DiscoMessage()
+      message._encoded = data
+      const decoded = message.decode();
+      const wallet = new MultiWallet('leofcoin:olivia')
+      wallet.fromId(decoded.from)
+      console.log(decoded);
+      const signature = decoded.signature
+      delete decoded.signature
+      message = new DiscoMessage(decoded)
+      const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32))
+      if (!verified) console.warn(`ignored message from ${decoded.from}
+        reason: invalid signature`);
+        
+      console.log(decoded.data);
+      
+      if (message.discoHash.name) this.protoCall[message.discoHash.name][message.method](message.decoded)
+    })
     return this
   }
   
@@ -46,6 +76,8 @@ export default class Peernet {
     return providers
   }
   
+  
+  
   async walk(hash) {
     // perform a walk but resolve first encounter
     console.log('walking');
@@ -60,10 +92,13 @@ export default class Peernet {
           }
           let result;
           try {
-           peer.send(JSON.stringify({
-             method: 'has',
-             hash
-           }))
+            let message = new DiscoMessage({data: hash}, {method: 'has'})
+            const wallet = new MultiWallet('leofcoin:olivia')
+            wallet.fromId(this.peerId)
+            const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
+            message.encode(signature)
+            message = await peer.request(message)
+            console.log({message});
           } catch (error) {
             console.log({error});
           } finally {

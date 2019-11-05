@@ -30,12 +30,13 @@ const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-star',
-    interval: 10000,
+    interval: 1000,
     port: 5000
   },
   room: {
     protocol: 'disco-room',
-    interval: 10000,
+    interval: 1000,
+    dialTimeout: 1000, // timeout before a dial is considered a failure
     port: 5000
   }
 }  

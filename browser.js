@@ -8,6 +8,7 @@ var fetch = _interopDefault(require('node-fetch'));
 var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
 var clientConnection = _interopDefault(require('socket-request-client'));
+var DiscoMessage = _interopDefault(require('disco-message'));
 var DiscoRoom = _interopDefault(require('disco-room'));
 
 var config = {
@@ -53,12 +54,13 @@ const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-star',
-    interval: 10000,
+    interval: 1000,
     port: 5000
   },
   room: {
     protocol: 'disco-room',
-    interval: 10000,
+    interval: 1000,
+    dialTimeout: 1000, // timeout before a dial is considered a failure
     port: 5000
   }
 };  
@@ -173,6 +175,12 @@ const getAddress = async () => {
   }
   
   return address
+};
+
+const debug = text => {
+  if (process.env.debug) {
+    console.log(text);
+  }
 };
 
 const generateQR = async (input, options = {}) => {
@@ -387,7 +395,7 @@ var versions = {
 }
 };
 
-var version = "1.0.26";
+var version = "1.0.27";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -514,12 +522,34 @@ class DhtEarth {
 }
 
 class Peernet {
-  constructor(discoRoom) {    
+  constructor(discoRoom, protoCall) {
     this.dht = new DhtEarth();
     this.discoRoom = discoRoom;
     this.protocol = this.discoRoom.config.api.protocol;
     this.port = this.discoRoom.config.api.port;
+    this.protoCall = protoCall;
     
+    this.discoRoom.on('data', data => {
+      console.log('incoming');
+      console.log({data});
+      
+      let message = new DiscoMessage();
+      message._encoded = data;
+      const decoded = message.decode();
+      const wallet = new MultiWallet('leofcoin:olivia');
+      wallet.fromId(decoded.from);
+      console.log(decoded);
+      const signature = decoded.signature;
+      delete decoded.signature;
+      message = new DiscoMessage(decoded);
+      const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32));
+      if (!verified) console.warn(`ignored message from ${decoded.from}
+        reason: invalid signature`);
+        
+      console.log(decoded.data);
+      
+      if (message.discoHash.name) this.protoCall[message.discoHash.name][message.method](message.decoded);
+    });
     return this
   }
   
@@ -567,10 +597,12 @@ class Peernet {
         if (peer !== undefined) {
           let result;
           try {
-           peer.send(JSON.stringify({
-             method: 'has',
-             hash
-           }));
+            let message = new DiscoMessage({data: hash}, {method: 'has'});
+            const wallet = new MultiWallet('leofcoin:olivia');
+            wallet.fromId(this.peerId);
+            const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
+            message.encode(signature);
+            peer.send(message.encoded);
           } catch (error) {
             console.log({error});
           } finally {
@@ -768,10 +800,35 @@ class LeofcoinApi {
     });    
     
     this.discoRoom = await new DiscoRoom(config);
-    this.peernet = new Peernet(this.discoRoom);
-    this.discoRoom.on('data', data => {
-      data = data.toString();
-      console.log(data);
+    this.peernet = new Peernet(this.discoRoom, {
+      'disco-data': {
+        has: message => {
+          const hash = message.discoHash.toString('hex');
+          return globalThis.blocksStore.has(hash)
+        },
+        in: () => {
+          
+        },
+        out: () => {
+          
+        }
+      },
+      'lfc-block': {
+        put: message => {
+          const hash = message.discoHash.toString('hex');
+          if (!globalThis.blocksStore.has(hash)) {
+            globalThis.blocksStore.set(hash, message.encoded);
+            debug(`Added block ${hash}`);
+          }
+          
+        },
+        get: message => {
+          const hash = message.discoHash.toString('hex');
+          if (globalThis.blocksStore.has(hash)) {
+            return globalThis.blocksStore.get(hash)
+          }
+        }
+      }
     });
     return
       // this.dht = new SimpleDHT(this.peernet)

@@ -89,4 +89,10 @@ const getAddress = async () => {
   return address
 }
 
-export { expected, merge, parseAddress, getAddress, envConfig, degreesToRadians, distanceInKmBetweenEarthCoordinates }
+const debug = text => {
+  if (process.env.debug) {
+    console.log(text);
+  }
+}
+
+export { debug, expected, merge, parseAddress, getAddress, envConfig, degreesToRadians, distanceInKmBetweenEarthCoordinates }

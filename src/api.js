@@ -2,7 +2,7 @@ import config from './api/config'
 import account from './api/account'
 import init from './api/init';
 import peernet from './api/peernet';
-import { expected, getAddress } from './utils.js';
+import { expected, getAddress, debug } from './utils.js';
 import DiscoRoom from 'disco-room';
 
 class SimpleDHT {
@@ -54,11 +54,36 @@ export default class LeofcoinApi {
     })    
     
     this.discoRoom = await new DiscoRoom(config)
-    this.peernet = new peernet(this.discoRoom);
-    this.discoRoom.on('data', data => {
-      data = data.toString()
-      console.log({data});
-    })
+    this.peernet = new peernet(this.discoRoom, {
+      'disco-data': {
+        has: message => {
+          const hash = message.discoHash.toString('hex');
+          return globalThis.blocksStore.has(hash)
+        },
+        in: () => {
+          
+        },
+        out: () => {
+          
+        }
+      },
+      'lfc-block': {
+        put: message => {
+          const hash = message.discoHash.toString('hex');
+          if (!globalThis.blocksStore.has(hash)) {
+            globalThis.blocksStore.set(hash, message.encoded)
+            debug(`Added block ${hash}`)
+          }
+          
+        },
+        get: message => {
+          const hash = message.discoHash.toString('hex');
+          if (globalThis.blocksStore.has(hash)) {
+            return globalThis.blocksStore.get(hash)
+          }
+        }
+      }
+    });
     return
       // this.dht = new SimpleDHT(this.peernet)
   }
