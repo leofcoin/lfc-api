@@ -96,7 +96,7 @@ export default class Peernet {
           }
           let result;
           try {
-            let message = new DiscoMessage({data: hash}, {method: 'has'})
+            let message = new DiscoMessage({ to: peerID, data: hash, from: this.peerId }, {method: 'has'})
             const wallet = new MultiWallet('leofcoin:olivia')
             wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
