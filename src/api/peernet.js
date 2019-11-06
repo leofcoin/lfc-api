@@ -4,13 +4,9 @@ import clientConnection from 'socket-request-client';
 import Dht from './dht-earth';
 import proto from './proto'
 import DiscoMessage from 'disco-message';
+import DiscoData from 'disco-data';
 import MultiWallet from 'multi-wallet';
 
-class DiscoData {
-  constructor(data) {
-    
-  }
-}
 export default class Peernet {
   constructor(discoRoom, protoCall) {
     this.dht = new Dht()
@@ -25,20 +21,35 @@ export default class Peernet {
       
       let message = new DiscoMessage()
       message._encoded = data
+      message.name = 'disco-data'
+      message.codecs = {
+        'disco-data': {
+          codec: '6464',
+          hashAlg: 'keccak-512'
+        }
+      }
       const decoded = message.decode();
       console.log({decoded});
       const wallet = new MultiWallet('leofcoin:olivia')
       console.log(decoded.from);
       wallet.fromId(decoded.from)
       console.log(decoded);
-      const signature = decoded.signature
-      delete decoded.signature
+      const signature = message.signature
       message = new DiscoMessage(decoded)
+      message.name = 'disco-data'
+      message.codecs = {
+        'disco-data': {
+          codec: '6464',
+          hashAlg: 'keccak-512'
+        }
+      }
+      console.log(message.method);
+      console.log(decoded.data.toString());
       const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32))
       if (!verified) console.warn(`ignored message from ${decoded.from}
         reason: invalid signature`);
         
-      console.log(decoded.data);
+      console.log(decoded.data.toString());
       
       if (message.discoHash.name) {
         if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) this.protoCall[message.discoHash.name][message.method](message.decoded)
@@ -90,6 +101,8 @@ export default class Peernet {
     console.log(this.availablePeers);
     
     if (hash) {
+      const node = new DiscoData(hash)
+      const data = node.encoded
       for (const [peerID, peer] of this.peerMap.entries()) {
         console.log(peer);
         if (peer !== undefined) {
@@ -98,13 +111,10 @@ export default class Peernet {
           }
           let result;
           try {
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codecs: {
-      'disco-data': {
-        codec: '6464',
-        hashAlg: 'keccak-512'
-      }
-    }})
-            const wallet = new MultiWallet('leofcoin:olivia')
+            console.log({peerID});
+            
+            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {method: 'has', name: node.name, codecs: node.codecs })
+            const wallet = new MultiWallet('leofcoin:olivia')   
             wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
             message.encode(signature)

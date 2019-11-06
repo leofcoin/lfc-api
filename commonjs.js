@@ -11,6 +11,7 @@ var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
 var clientConnection = _interopDefault(require('socket-request-client'));
 var DiscoMessage = _interopDefault(require('disco-message'));
+var DiscoData = _interopDefault(require('disco-data'));
 var DiscoRoom = _interopDefault(require('disco-room'));
 
 var config = {
@@ -396,7 +397,7 @@ var versions = {
 }
 };
 
-var version = "1.0.33";
+var version = "1.0.34";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -536,20 +537,35 @@ class Peernet {
       
       let message = new DiscoMessage();
       message._encoded = data;
+      message.name = 'disco-data';
+      message.codecs = {
+        'disco-data': {
+          codec: '6464',
+          hashAlg: 'keccak-512'
+        }
+      };
       const decoded = message.decode();
       console.log({decoded});
       const wallet = new MultiWallet('leofcoin:olivia');
       console.log(decoded.from);
       wallet.fromId(decoded.from);
       console.log(decoded);
-      const signature = decoded.signature;
-      delete decoded.signature;
+      const signature = message.signature;
       message = new DiscoMessage(decoded);
+      message.name = 'disco-data';
+      message.codecs = {
+        'disco-data': {
+          codec: '6464',
+          hashAlg: 'keccak-512'
+        }
+      };
+      console.log(message.method);
+      console.log(decoded.data.toString());
       const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32));
       if (!verified) console.warn(`ignored message from ${decoded.from}
         reason: invalid signature`);
         
-      console.log(decoded.data);
+      console.log(decoded.data.toString());
       
       if (message.discoHash.name) {
         if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) this.protoCall[message.discoHash.name][message.method](message.decoded);
@@ -601,18 +617,17 @@ class Peernet {
     console.log(this.availablePeers);
     
     if (hash) {
+      const node = new DiscoData(hash);
+      const data = node.encoded;
       for (const [peerID, peer] of this.peerMap.entries()) {
         console.log(peer);
         if (peer !== undefined) {
           let result;
           try {
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codecs: {
-      'disco-data': {
-        codec: '6464',
-        hashAlg: 'keccak-512'
-      }
-    }});
-            const wallet = new MultiWallet('leofcoin:olivia');
+            console.log({peerID});
+            
+            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {method: 'has', name: node.name, codecs: node.codecs });
+            const wallet = new MultiWallet('leofcoin:olivia');   
             wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
             message.encode(signature);
