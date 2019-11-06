@@ -396,7 +396,7 @@ var versions = {
 }
 };
 
-var version = "1.0.31";
+var version = "1.0.32";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -606,7 +606,12 @@ class Peernet {
         if (peer !== undefined) {
           let result;
           try {
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has'});
+            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codec: {
+      'disco-data': {
+        codec: '6464',
+        hashAlg: 'keccak-512'
+      }
+    }});
             const wallet = new MultiWallet('leofcoin:olivia');
             wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
@@ -814,6 +819,7 @@ class LeofcoinApi {
       'disco-data': {
         has: message => {
           const hash = message.discoHash.toString('hex');
+          console.log(message);
           return globalThis.blocksStore.has(hash)
         },
         in: () => {

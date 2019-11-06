@@ -58,6 +58,7 @@ export default class LeofcoinApi {
       'disco-data': {
         has: message => {
           const hash = message.discoHash.toString('hex');
+          console.log(message);
           return globalThis.blocksStore.has(hash)
         },
         in: () => {
