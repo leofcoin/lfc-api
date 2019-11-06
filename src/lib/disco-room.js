@@ -239,7 +239,7 @@ const answer = (peer, data, timeout = 1000) => new Promise((resolve, reject) => 
 
 const close = async peer => peer.destroy();
 
-var Peer = ({peerInfo, signal, timeout = 1000}) => {
+var Peer = ({peerInfo, signal, timeout = 1000, requestTimeOut = 5000}) => {
   if (!globalThis.wrtc) globalThis.wrtc = require('wrtc');
   const peer = new Peer$1({ initiator: signal ? false : true, wrtc: wrtc });
   // if (signal)
@@ -250,6 +250,29 @@ var Peer = ({peerInfo, signal, timeout = 1000}) => {
     on: (event, cb) => peer.on(event, cb),
     once: (event, cb) => peer.once(event, cb),
     signal: signal => peer.signal(signal),
+    request: (message) => new Promise((resolve, reject) => {
+      let resolved;
+      const messageInterface = message;
+      const id = message.id || message.discoHash.toBs32();
+      
+      const once = message => {
+        messageInterface._encoded = message;
+        message.decode();
+        if (message.id === id) {
+          resolved = true;
+          resolve(message);
+          peer.removeListener('data', once);
+        }
+      };
+      setTimeout( () => {
+        if (!resolved) reject();
+      }, requestTimeOut);
+      
+      peer.on('data', once);
+      peer.send(message.encoded);
+      
+    }),
+    removeListener: (event, cb) => peer.removeListener(event, cb),
     close: () => close(peer)
   }
 

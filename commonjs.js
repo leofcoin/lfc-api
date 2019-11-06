@@ -203,11 +203,13 @@ const generateProfileQR = async (profile = {}, options = {}) => {
 const generateProfile = async () => {
   const wallet = new MultiWallet('leofcoin:olivia');
   const mnemonic = wallet.generate();
+  const account = wallet.account(0);
+  const external = account.external(0);
   return {
     mnemonic,
-    publicKey: wallet.account(0).node.publicKey,
-    privateKey: wallet.account(0).node.privateKey,
-    peerId: wallet.id
+    publicKey: external.publicKey,
+    privateKey: external.privateKey,
+    peerId: external.id
   }
 };
 
@@ -547,7 +549,10 @@ class Peernet {
         
       console.log(decoded.data);
       
-      if (message.discoHash.name) this.protoCall[message.discoHash.name][message.method](message.decoded);
+      if (message.discoHash.name) {
+        if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) this.protoCall[message.discoHash.name][message.method](message.decoded);
+        else console.log(`unsupported protocol ${message.discoHash.name}`);
+      }
     });
     return this
   }
@@ -585,11 +590,14 @@ class Peernet {
     return providers
   }
   
+  
+  
   async walk(hash) {
     // perform a walk but resolve first encounter
     console.log('walking');
     console.log(this.peerMap);
     console.log(this.availablePeers);
+    
     if (hash) {
       for (const [peerID, peer] of this.peerMap.entries()) {
         console.log(peer);
@@ -598,10 +606,11 @@ class Peernet {
           try {
             let message = new DiscoMessage({data: hash}, {method: 'has'});
             const wallet = new MultiWallet('leofcoin:olivia');
-            wallet.fromId(this.peerId);
+            wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
             message.encode(signature);
-            peer.send(message.encoded);
+            message = await peer.request(message);
+            console.log({message});
           } catch (error) {
             console.log({error});
           } finally {
@@ -940,7 +949,7 @@ class LeofcoinApi {
     let data;
     if (!hash) throw expected(['hash: String'], { hash })
     try {
-      data = await globalThis.blocksStore.get(hash + 'e');
+      data = await globalThis.blocksStore.get(hash);
       console.log({data});
     } catch (e) {
       if (!data) {

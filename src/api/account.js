@@ -22,11 +22,13 @@ const generateProfileQR = async (profile = {}, options = {}) => {
 const generateProfile = async () => {
   const wallet = new MultiWallet('leofcoin:olivia');
   const mnemonic = wallet.generate();
+  const account = wallet.account(0)
+  const external = account.external(0)
   return {
     mnemonic,
-    publicKey: wallet.account(0).node.publicKey,
-    privateKey: wallet.account(0).node.privateKey,
-    peerId: wallet.id
+    publicKey: external.publicKey,
+    privateKey: external.privateKey,
+    peerId: external.id
   }
 }
 

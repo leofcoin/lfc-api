@@ -24,8 +24,8 @@ console.log(c);
   // const generated = await mm.account.generateProfile()
   // console.log(generated);
   
-  const qr = await mm.account.export('password')
-  console.log(qr);
+  // const qr = await mm.account.export('password')
+  // console.log(qr);
   
   setInterval(async function () {
     let hello = await mm.get('hello')

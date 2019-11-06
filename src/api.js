@@ -195,7 +195,7 @@ export default class LeofcoinApi {
     let data;
     if (!hash) throw expected(['hash: String'], { hash })
     try {
-      data = await globalThis.blocksStore.get(hash + 'e')
+      data = await globalThis.blocksStore.get(hash)
       console.log({data});
     } catch (e) {
       if (!data) {

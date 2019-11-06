@@ -38,7 +38,10 @@ export default class Peernet {
         
       console.log(decoded.data);
       
-      if (message.discoHash.name) this.protoCall[message.discoHash.name][message.method](message.decoded)
+      if (message.discoHash.name) {
+        if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) this.protoCall[message.discoHash.name][message.method](message.decoded)
+        else console.log(`unsupported protocol ${message.discoHash.name}`);
+      }
     })
     return this
   }
@@ -83,18 +86,19 @@ export default class Peernet {
     console.log('walking');
     console.log(this.peerMap);
     console.log(this.availablePeers);
+    
     if (hash) {
       for (const [peerID, peer] of this.peerMap.entries()) {
         console.log(peer);
         if (peer !== undefined) {
           const onerror = error => {
-            
+            console.log({error});
           }
           let result;
           try {
             let message = new DiscoMessage({data: hash}, {method: 'has'})
             const wallet = new MultiWallet('leofcoin:olivia')
-            wallet.fromId(this.peerId)
+            wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
             message.encode(signature)
             message = await peer.request(message)

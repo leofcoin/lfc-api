@@ -1,6 +1,6 @@
 {
   "name": "lfc-api",
-  "version": "1.0.27",
+  "version": "1.0.29",
   "description": "",
   "main": "index.js",
   "browser": "browser.js",
