@@ -396,7 +396,7 @@ var versions = {
 }
 };
 
-var version = "1.0.32";
+var version = "1.0.33";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -606,7 +606,7 @@ class Peernet {
         if (peer !== undefined) {
           let result;
           try {
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codec: {
+            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codecs: {
       'disco-data': {
         codec: '6464',
         hashAlg: 'keccak-512'

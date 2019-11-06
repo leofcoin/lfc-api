@@ -98,7 +98,7 @@ export default class Peernet {
           }
           let result;
           try {
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codec: {
+            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data: Buffer.from(hash) }, {method: 'has', name: 'disco-data', codecs: {
       'disco-data': {
         codec: '6464',
         hashAlg: 'keccak-512'
