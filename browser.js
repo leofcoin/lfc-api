@@ -398,7 +398,7 @@ var versions = {
 }
 };
 
-var version = "1.0.34";
+var version = "1.0.35";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -627,7 +627,8 @@ class Peernet {
           try {
             console.log({peerID});
             
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {method: 'has', name: node.name, codecs: node.codecs });
+            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs });
+            message.method = 'has';
             const wallet = new MultiWallet('leofcoin:olivia');   
             wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
             const signature = wallet.sign(message.discoHash.digest.slice(0, 32));

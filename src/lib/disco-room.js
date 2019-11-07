@@ -257,8 +257,8 @@ var Peer = ({peerInfo, signal, timeout = 1000, requestTimeOut = 5000}) => {
       
       const once = message => {
         messageInterface._encoded = message;
-        message.decode();
-        if (message.id === id) {
+        messageInterface.decode();
+        if (messageInterface.id === id) {
           resolved = true;
           resolve(message);
           peer.removeListener('data', once);
