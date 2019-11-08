@@ -4,6 +4,9 @@ import init from './api/init';
 import peernet from './api/peernet';
 import { expected, getAddress, debug } from './utils.js';
 import DiscoRoom from 'disco-room';
+import DiscoData from 'disco-data';
+import DiscoDHTData from 'disco-dht-data';
+import PeerInfo from 'disco-peer-info';
 
 class SimpleDHT {
   constructor(config, discoRoom) {
@@ -55,11 +58,38 @@ export default class LeofcoinApi {
     
     this.discoRoom = await new DiscoRoom(config)
     this.peernet = new peernet(this.discoRoom, {
-      'disco-data': {
-        has: message => {
-          const hash = message.discoHash.toString('hex');
-          console.log(message);
-          return globalThis.blocksStore.has(hash)
+      'disco-dht': {
+        has: async message => {
+          try {
+            const node = new DiscoDHTData()
+            console.log(message.decoded.data);
+            node._encoded = message.decoded.data
+            node.decode()
+            console.log(await globalThis.blocksStore.has(node.decoded.data.hash.toString()));
+            console.log(node.decoded);
+            const data = node.decoded.data
+            console.log(node.decoded.data.hash);
+              console.log(data.value)
+              console.log(data.hash.toString());
+            if (data.value) {
+              console.log(data.value);
+              const info = this.discoRoom.availablePeers.get(message.decoded.from)
+              this.peernet.addProvider(info, data.hash.toString())
+              return undefined
+            } else {
+              
+              const has = await globalThis.blocksStore.has(node.decoded.data.hash.toString())
+              console.log({has});
+              console.log(node.encoded);
+              node._decoded.data.value = has
+              node.encode()
+              return node.encoded
+            }
+          } catch (e) {
+            console.error(e);
+          }
+          
+          
         },
         in: () => {
           
@@ -82,6 +112,20 @@ export default class LeofcoinApi {
           if (globalThis.blocksStore.has(hash)) {
             return globalThis.blocksStore.get(hash)
           }
+        }
+      },
+      'disco-data': {
+        get: async message => {
+          const node = new DiscoData(message.decoded.data)
+          console.log(node.decoded);
+          node.decode()
+          console.log(message.decoded);
+          const data = await this.get(message.decoded.data)
+          console.log(data);
+          // return this.get(message.decoded)
+        },
+        put: message => {
+          
         }
       }
     });
@@ -202,6 +246,9 @@ export default class LeofcoinApi {
       if (!data) {
         const providers = await this.peernet.providersFor(hash)
         console.log({providers});
+        data = await this.peernet.get(hash)
+        console.log(data);
+        // blocksStore.put(hash, data)
         if (providers && providers.length > 0) {
           data = this.peernet.get(hash)
           console.log(data);
@@ -222,7 +269,7 @@ export default class LeofcoinApi {
   
   async rm(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blocksStore.remove(hash)
+    return await blocksStore.delete(hash)
   }
   
   async ls(hash) {

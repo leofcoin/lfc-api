@@ -1,5 +1,6 @@
 import { distanceInKmBetweenEarthCoordinates, parseAddress, getAddress } from './../utils'
 import fetch from 'node-fetch';
+import PeerInfo from 'disco-peer-info';
 
 export default class DhtEarth {
   /**
@@ -27,7 +28,7 @@ export default class DhtEarth {
    * 
    */
   async getDistance(peer, provider) {
-    const { latitude, longitude } = await this.getCoordinates(provider)
+    const { latitude, longitude } = await this.getCoordinates(provider.address)
     return {provider, distance: distanceInKmBetweenEarthCoordinates(peer.latitude,peer.longitude,latitude,longitude)}
   }
   
@@ -64,6 +65,7 @@ export default class DhtEarth {
    * 
    */  
   async addProvider(address, hash) {
+    console.log({address, hash});
     let providers = [];
     if (this.providerMap.has(hash)) providers = this.providerMap.get(hash)
       

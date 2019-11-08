@@ -19,10 +19,10 @@ export default async config => {
       globalThis.accountStore = new Storage(config.storage.account)
       await accountStore.put({ public: { peerId: config.identity.peerId }})
     }
-    if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23' || key === '1.0.26') {
-      const defaultConfig = envConfig();
-      config.discovery = defaultConfig.discovery;
-    }
+    // if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23' || key === '1.0.26') {
+    const defaultConfig = envConfig();
+    config.discovery = defaultConfig.discovery;
+    // }
     config.version = key;
   }
   await configStore.put(config)

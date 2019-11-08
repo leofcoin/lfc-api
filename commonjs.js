@@ -10,8 +10,12 @@ var fetch = _interopDefault(require('node-fetch'));
 var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
 var clientConnection = _interopDefault(require('socket-request-client'));
+require('disco-peer-info');
 var DiscoMessage = _interopDefault(require('disco-message'));
 var DiscoData = _interopDefault(require('disco-data'));
+var DiscoCodec = _interopDefault(require('disco-codec'));
+require('disco-hash');
+var DiscoDHTData = _interopDefault(require('disco-dht-data'));
 var DiscoRoom = _interopDefault(require('disco-room'));
 
 var config = {
@@ -37,7 +41,7 @@ const DEFAULT_QR_OPTIONS = {
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // peer addresses to discover other peers
-    peers: ['star.leofcoin.org/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star',],
+    peers: ['star.leofcoin.org/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star',],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-star',
@@ -53,7 +57,7 @@ const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
 
 const DEFAULT_NODE_DISCOVERY_CONFIG = {
   // peer addresses to discover other peers
-  peers: ['star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star'],
+  peers: ['star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star'],
   // disco-star configuration see https://github.com/leofcoin/disco-star
   star: {
     protocol: 'disco-star',
@@ -90,7 +94,7 @@ const DEFAULT_CONFIG = {
     'disco-star',
     'disco-room'
   ],
-  version: '1.0.9'
+  version: '1.0.36'
 };
 
 const expected = (expected, actual) => {
@@ -315,6 +319,17 @@ class LeofcoinStorage {
     return this.possibleJSON(data)
   }
   
+  async has(key) {
+    if (typeof key === 'object') return this.many('has', key);
+    
+    try {
+      await this.db.get(new Key(key));
+      return true;
+    } catch (e) {
+      return false
+    }
+  }
+  
   async delete(key) {
     return this.db.delete(new Key(key))
   }
@@ -374,8 +389,8 @@ var versions = {
 	"1.0.24": {
 	discovery: {
 		peers: [
-			"star.leofcoin.org/5000/disco-room/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp",
-			"star.leofcoin.org/4000/leofcoin-api/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp"
+			"star.leofcoin.org/5000/disco-room/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW",
+			"star.leofcoin.org/4000/leofcoin-api/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW"
 		],
 		star: {
 			protocol: "disco-room",
@@ -387,17 +402,31 @@ var versions = {
 	"1.0.25": {
 	discovery: {
 		peers: [
-			"star.leofcoin.org/5000/3tr3E5MNvjNR6fFrdzYnThaG3fs6bPYwTaxPoQAxbji2bqXR1sGyxpcp73ivpaZifiCHTJag8hw5Ht99tkV3ixJDsBCDsNMiDVp/disco-star"
+			"star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
 		]
 	}
 },
 	"1.0.26": {
 	discovery: {
 	}
+},
+	"1.0.36": {
+	discovery: {
+		peers: [
+			"star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
+		]
+	}
+},
+	"1.0.37": {
+	discovery: {
+		peers: [
+			"star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
+		]
+	}
 }
 };
 
-var version = "1.0.35";
+var version = "1.0.37";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -415,10 +444,10 @@ var upgrade = async config => {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
       await accountStore.put({ public: { peerId: config.identity.peerId }});
     }
-    if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23' || key === '1.0.26') {
-      const defaultConfig = envConfig();
-      config.discovery = defaultConfig.discovery;
-    }
+    // if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23' || key === '1.0.26') {
+    const defaultConfig = envConfig();
+    config.discovery = defaultConfig.discovery;
+    // }
     config.version = key;
   }
   await configStore.put(config);
@@ -475,7 +504,7 @@ class DhtEarth {
    * 
    */
   async getDistance(peer, provider) {
-    const { latitude, longitude } = await this.getCoordinates(provider);
+    const { latitude, longitude } = await this.getCoordinates(provider.address);
     return {provider, distance: distanceInKmBetweenEarthCoordinates(peer.latitude,peer.longitude,latitude,longitude)}
   }
   
@@ -512,6 +541,7 @@ class DhtEarth {
    * 
    */  
   async addProvider(address, hash) {
+    console.log({address, hash});
     let providers = [];
     if (this.providerMap.has(hash)) providers = this.providerMap.get(hash);
       
@@ -530,46 +560,66 @@ class Peernet {
     this.protocol = this.discoRoom.config.api.protocol;
     this.port = this.discoRoom.config.api.port;
     this.protoCall = protoCall;
-    
-    this.discoRoom.on('data', data => {
+    this.codecs = {
+      'disco-dht': {
+        codec: '6468',
+        hashAlg: 'keccak-512'
+      },
+      'disco-data': {
+        codec: '6464',
+        hashAlg: 'keccak-512'
+      }
+    };
+    this.discoRoom.on('data', async data => {
       console.log('incoming');
       console.log({data});
-      
+      console.log(new DiscoCodec(data.toString('hex'), this.codecs));
       let message = new DiscoMessage();
       message._encoded = data;
-      message.name = 'disco-data';
       message.codecs = {
+        'disco-dht': {
+          codec: '6468',
+          hashAlg: 'keccak-512'
+        },
         'disco-data': {
           codec: '6464',
           hashAlg: 'keccak-512'
         }
       };
+      message.decode();
+      // console.log(message.discoHash.name);
       const decoded = message.decode();
-      console.log({decoded});
+      
       const wallet = new MultiWallet('leofcoin:olivia');
-      console.log(decoded.from);
+      // console.log(decoded.from);
       wallet.fromId(decoded.from);
-      console.log(decoded);
+      // console.log(decoded);
+      // console.log(message);
       const signature = message.signature;
-      message = new DiscoMessage(decoded);
-      message.name = 'disco-data';
-      message.codecs = {
-        'disco-data': {
-          codec: '6464',
-          hashAlg: 'keccak-512'
-        }
-      };
-      console.log(message.method);
-      console.log(decoded.data.toString());
+      // console.log(message.method);
+      // console.log(decoded.data.toString());
       const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32));
       if (!verified) console.warn(`ignored message from ${decoded.from}
         reason: invalid signature`);
         
-      console.log(decoded.data.toString());
+      // console.log(decoded.data.toString());
       
       if (message.discoHash.name) {
-        if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) this.protoCall[message.discoHash.name][message.method](message.decoded);
-        else console.log(`unsupported protocol ${message.discoHash.name}`);
+        if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) {          
+          const peer = this.peerMap.get(message.decoded.from);
+          const data = await this.protoCall[message.discoHash.name][message.method](message);
+          if (data !== undefined) {
+            message._decoded.data = data;
+            message._decoded.to = message._decoded.from;
+            message._decoded.from = this.discoRoom.peerId;
+            const wallet = new MultiWallet('leofcoin:olivia');
+            wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
+            const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
+            message.encode(signature);
+            peer.send(message.encoded);
+          }
+          
+        } else { console.log(`unsupported protocol ${message.discoHash.name}`); }
       }
     });
     return this
@@ -613,59 +663,103 @@ class Peernet {
   async walk(hash) {
     // perform a walk but resolve first encounter
     console.log('walking');
-    console.log(this.peerMap);
-    console.log(this.availablePeers);
-    
-    if (hash) {
-      const node = new DiscoData(hash);
-      const data = node.encoded;
-      for (const [peerID, peer] of this.peerMap.entries()) {
-        console.log(peer);
-        if (peer !== undefined) {
-          let result;
-          try {
-            console.log({peerID});
-            
-            let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs });
-            message.method = 'has';
-            const wallet = new MultiWallet('leofcoin:olivia');   
-            wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
-            const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
-            message.encode(signature);
-            message = await peer.request(message);
-            console.log({message});
-          } catch (error) {
-            console.log({error});
-          } finally {
-            
+      
+    try {
+      if (hash) {
+        console.log({hash});
+        const node = new DiscoDHTData({hash}, {codecs: this.codecs, name: 'disco-dht'});
+        console.log(node.encode());
+        const data = node.encoded;
+        // console.log(node.decoded);
+        console.log(data + 'node data');
+        // console.log(node);
+        for (const [peerID, peer] of this.peerMap.entries()) {
+          console.log(peerID, peer);
+          if (peer !== undefined) {
+            const onerror = error => {
+              console.log({error});
+            };
+            let result;
+            try {
+              console.log({peerID});
+              
+              let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs });
+              message.method = 'has';
+              console.log(message.discoHash.name);
+              const wallet = new MultiWallet('leofcoin:olivia');   
+              wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
+              const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
+              message.encode(signature);
+              message = await peer.request(message);
+              console.log({message});
+              console.log('m result');
+            } catch (error) {
+              console.log({error});
+            }
+            console.log({result});
+            if (result && result.value || typeof result === 'boolean' && result) {
+              let providers = [];
+              const address = this.peerMap.get(peerId).reduce((p, c) => {
+                const {address, protocol} = parseAddress$1(c);
+                if (protocol === this.protocol) return c
+                return p
+              }, null);
+              this.addProvider(address, hash);
+              return this.peerMap.get(address)
+            }  
           }
-          console.log({result});
-        }
-        
-      }      
+          
+        }      
+      }
+      
+      this.walking = true;    
+      for (const [peerID, clients] of this.clientMap.entries()) {
+        const client = clients[this.protocol];
+        if (client) await client.request({url: 'ls', params: {}});
+        // TODO: 
+      }
+      this.walking = false;
+    } catch (e) {
+      console.error(e);
     }
-    
-    this.walking = true;    
-    for (const [peerID, clients] of this.clientMap.entries()) {
-      const client = clients[this.protocol];
-      if (client) await client.request({url: 'ls', params: {}});
-      // TODO: 
-    }
-    this.walking = false;
   }
    
   async get(hash) {
     console.log({hash});
     let providers = await this.providersFor(hash);
+    
     if (!providers || providers.length === 0) throw `nothing found for ${hash}`
+    console.log({providers});
     const closestPeer = await this.dht.closestPeer(providers);
     console.log({closestPeer});
-    const { protocol, port, address, peerId } = parseAddress$1(closestPeer);    
-    let client;
-    if (this.clientMap.has(peerId)) {
-      client = this.clientMap.get(peerId);
-      client = client[protocol];
+    // const { protocol, port, address, peerId } = parseAddress(closestPeer)    
+    let peer;
+    if (this.peerMap.has(closestPeer.peerId)) {
+      peer = this.peerMap.get(closestPeer.peerId);
+    } else {
+      peer = this.discoRoom.dial(closestPeer);
     }
+    const node = new DiscoData();
+    node.create(hash);
+    node.encode();
+    const data = node.encoded;
+    let message = new DiscoMessage({
+      from: this.discoRoom.peerId, 
+      to: closestPeer.peerId,
+      data 
+    }, {
+      name: node.name,
+      codecs: node.codecs
+    });
+    message.method = 'get';
+    const wallet = new MultiWallet('leofcoin:olivia');   
+    wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
+    const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
+    message.encode(signature);
+    console.log({message}, 'sending');
+    message = await peer.request(message);
+    console.log({message});
+    
     
     if (!client) {
        try {
@@ -832,11 +926,38 @@ class LeofcoinApi {
     
     this.discoRoom = await new DiscoRoom(config);
     this.peernet = new Peernet(this.discoRoom, {
-      'disco-data': {
-        has: message => {
-          const hash = message.discoHash.toString('hex');
-          console.log(message);
-          return globalThis.blocksStore.has(hash)
+      'disco-dht': {
+        has: async message => {
+          try {
+            const node = new DiscoDHTData();
+            console.log(message.decoded.data);
+            node._encoded = message.decoded.data;
+            node.decode();
+            console.log(await globalThis.blocksStore.has(node.decoded.data.hash.toString()));
+            console.log(node.decoded);
+            const data = node.decoded.data;
+            console.log(node.decoded.data.hash);
+              console.log(data.value);
+              console.log(data.hash.toString());
+            if (data.value) {
+              console.log(data.value);
+              const info = this.discoRoom.availablePeers.get(message.decoded.from);
+              this.peernet.addProvider(info, data.hash.toString());
+              return undefined
+            } else {
+              
+              const has = await globalThis.blocksStore.has(node.decoded.data.hash.toString());
+              console.log({has});
+              console.log(node.encoded);
+              node._decoded.data.value = has;
+              node.encode();
+              return node.encoded
+            }
+          } catch (e) {
+            console.error(e);
+          }
+          
+          
         },
         in: () => {
           
@@ -859,6 +980,20 @@ class LeofcoinApi {
           if (globalThis.blocksStore.has(hash)) {
             return globalThis.blocksStore.get(hash)
           }
+        }
+      },
+      'disco-data': {
+        get: async message => {
+          const node = new DiscoData(message.decoded.data);
+          console.log(node.decoded);
+          node.decode();
+          console.log(message.decoded);
+          const data = await this.get(message.decoded.data);
+          console.log(data);
+          // return this.get(message.decoded)
+        },
+        put: message => {
+          
         }
       }
     });
@@ -979,6 +1114,9 @@ class LeofcoinApi {
       if (!data) {
         const providers = await this.peernet.providersFor(hash);
         console.log({providers});
+        data = await this.peernet.get(hash);
+        console.log(data);
+        // blocksStore.put(hash, data)
         if (providers && providers.length > 0) {
           data = this.peernet.get(hash);
           console.log(data);
@@ -999,7 +1137,7 @@ class LeofcoinApi {
   
   async rm(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
-    return await blocksStore.remove(hash)
+    return await blocksStore.delete(hash)
   }
   
   async ls(hash) {

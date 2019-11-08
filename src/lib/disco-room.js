@@ -6,12 +6,40 @@ var PeerInfo = _interopDefault(require('disco-peer-info'));
 var connection = _interopDefault(require('socket-request-client'));
 var PubSub = _interopDefault(require('little-pubsub'));
 var ip = require('ip');
+var fetch = _interopDefault(require('node-fetch'));
 var Peer$1 = _interopDefault(require('simple-peer'));
 
+const nodeDebug = process.env.debug || process.argv.indexOf('--verbose') !== -1;
+
+const DEBUG = Boolean(typeof window !== undefined) ? nodeDebug : window.DEBUG;
+
 const debug = text => {
-  if (process.env.debug) {
-    console.log(text);
+  if (DEBUG) {
+    const stack = new Error().stack;
+    const caller = stack.split('\n')[2].trim();
+    console.groupCollapsed(chalk.blue(text));
+    console.log(caller);
+    console.groupEnd();
   }
+};
+
+const lastFetched = {
+  time: 0,
+  address: undefined
+};
+
+const getAddress = async () => {
+  let {address, time} = lastFetched;
+  const now = Math.round(new Date().getTime() / 1000);
+  if (now - time > 300) {
+    address = await fetch('https://icanhazip.com/');
+    address = await address.text();
+    address = address.replace('\n', '');
+    lastFetched.address = address;
+    lastFetched.time = Math.round(new Date().getTime() / 1000);  
+  }
+  
+  return address
 };
 
 const wss = typeof window !== 'undefined';
@@ -28,14 +56,6 @@ class DiscoBase {
     this.clientMap = new Map();
     
     this.peerMap = new Map();
-    
-    this.peerInfo = new PeerInfo();
-    this.peerInfo.fromDecoded({
-      protocols: this.protocols,
-      peerId: this.peerId,
-      address: '127.0.0.1'
-    });
-    this.peerInfo.encode();
     
     this._onJoin = this._onJoin.bind(this);
     this._onLeave = this._onLeave.bind(this);
@@ -101,6 +121,13 @@ class DiscoBase {
   }
   
   async _init() {
+    this.peerInfo = new PeerInfo();
+    this.peerInfo.fromDecoded({
+      protocols: this.protocols,
+      peerId: this.peerId,
+      address: await getAddress()
+    });
+    this.peerInfo.encode();
     for (const star of this.config.discovery.peers) {
       try {
         const peerInfo = new PeerInfo();
