@@ -7,21 +7,9 @@ import DiscoRoom from 'disco-room';
 import DiscoData from 'disco-data';
 import DiscoDHTData from 'disco-dht-data';
 import PeerInfo from 'disco-peer-info';
+import DiscoBus from '@leofcoin/disco-bus';
 
-class SimpleDHT {
-  constructor(config, discoRoom) {
-    this.peers = discoRoom.peers
-  }
-  
-  has(hash) {
-    
-  }
-  
-  get(hash) {
-    
-  }
-}
-export default class LeofcoinApi {
+export default class LeofcoinApi extends DiscoBus {
   get connectionMap() {
     console.log(this.discoRoom.connectionMap.entries());
     return this.discoRoom.connectionMap
@@ -30,6 +18,7 @@ export default class LeofcoinApi {
     return this.discoRoom.peerMap
   }
   constructor(options = { config: {}, init: true, start: true }) {
+    super()
     if (!options.config) options.config = {}
     this.config = config;
     this.account = account;
@@ -57,6 +46,8 @@ export default class LeofcoinApi {
     })    
     
     this.discoRoom = await new DiscoRoom(config)
+    
+    
     this.peernet = new peernet(this.discoRoom, {
       'disco-dht': {
         has: async message => {
@@ -117,11 +108,17 @@ export default class LeofcoinApi {
       'disco-data': {
         get: async message => {
           const node = new DiscoData(message.decoded.data)
-          console.log(node.decoded);
           node.decode()
-          console.log(message.decoded);
-          const data = await this.get(message.decoded.data)
-          console.log(data);
+          if (!node.response) {
+            const data = await this.get(node.hash.toString())
+            node.data = data.data ? Buffer.from(data.data) : data
+            node.response = true
+            node.encode()
+            return node.encoded
+          } else {
+            this.put(node.hash.toString(), node.data.toString())
+            return undefined
+          }
           // return this.get(message.decoded)
         },
         put: message => {

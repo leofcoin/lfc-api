@@ -5,6 +5,7 @@ import cjs from 'rollup-plugin-commonjs';
 import json from 'rollup-plugin-json';
 import replace from 'rollup-plugin-re';
 import { terser } from 'rollup-plugin-terser';
+import builtins from 'rollup-plugin-node-builtins';
 
 try {
   execSync('rm browser.js.tmp-browserify-*')
@@ -43,11 +44,23 @@ export default [{
         const imported = await import('./lib/disco-room.js');
         const DiscoRoom = imported.default;`
     }),
-    cjs({
+    // builtins(),
+    // resolve({
+    //   preferBuiltins: false,
+    //   mainFields: ['module', 'main', 'browser']
+    // }),  
+    resolve({
+        preferBuiltins: false,
+          // include: ['node_modules/**'],
+        mainFields: ['module', 'main', 'browser'],
+        only: ['node_modules/protons/**']
+      }),
+    cjs({include: ['node_modules/**'],
       namedExports: {
         // left-hand side can be an absolute path, a path
         // relative to the current directory, or the name
         // of a module in node_modules
+        'node_modules/wrtc': ['wrtc'],
         './../lib/qrcode.js': ['QRCode'],
         './../node_modules/multi-wallet/src/index.js': ['MultiWallet'],
         './../node_modules/disco-room/disco-room.js': ['DiscoRoom']
@@ -82,8 +95,8 @@ export default [{
       QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`,
       DISCO_ROOM_IMPORT: `const DiscoRoom = require('disco-room')`
     }),
-    
     cjs({
+      includes: 'node_modules',
       namedExports: {
         // left-hand side can be an absolute path, a path
         // relative to the current directory, or the name

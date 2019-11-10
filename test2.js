@@ -1,5 +1,8 @@
 const test = require('tape');
 const m = require('./commonjs.js');
+const { readFile } = require('fs');
+const DiscoData = require('disco-data');
+const {join} = require('path')
 
 const {codes, privateKey, mnemonic } = {
   codes: [
@@ -26,25 +29,17 @@ console.log(c);
   
   // const qr = await mm.account.export('password')
   // console.log(qr);
-  await mm.rm('hello')
-  mm.subscribe('peer:connected', async () => {
-    try {
-      const hello = await mm.get('hello')  
-      const web = await mm.get('2jkuodZxHAgjZY5C8siiBQvKRPr1NQbLjsMZvkfmPQ7N2tymXr')
-    } catch (e) {
-      console.error(e); 
-    }
+  await mm.put('hello', 'disco')
+  readFile(join(__dirname, 'doc/index0.html'), async (error, data) => {
+    const dataNode = new DiscoData()
+    dataNode.create({
+      data
+    })
+    
+    dataNode.encode()
+    console.log(dataNode.discoHash.toBs58());
+    await mm.put(dataNode.discoHash.toBs58(), data)  
   })
   
+  let hello = await mm.get('hello')
 })
-// (async () => {
-//   try {
-//     console.log(m);
-//     console.log();
-//     console.log();
-//   } catch (e) {
-//     console.log(e);
-//   } finally {
-//
-//   }
-// })();

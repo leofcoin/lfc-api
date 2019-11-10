@@ -11,11 +11,12 @@ var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
 var clientConnection = _interopDefault(require('socket-request-client'));
 require('disco-peer-info');
-var DiscoMessage = _interopDefault(require('disco-message'));
-var DiscoData = _interopDefault(require('disco-data'));
+var protons = _interopDefault(require('@ipfn/protons'));
+var DiscoHash = _interopDefault(require('disco-hash'));
 var DiscoCodec = _interopDefault(require('disco-codec'));
-require('disco-hash');
+var DiscoData = _interopDefault(require('disco-data'));
 var DiscoDHTData = _interopDefault(require('disco-dht-data'));
+var DiscoBus = _interopDefault(require('@leofcoin/disco-bus'));
 var DiscoRoom = _interopDefault(require('disco-room'));
 
 var config = {
@@ -553,8 +554,103 @@ class DhtEarth {
   
 }
 
-class Peernet {
+var proto = `// disco message
+message DiscoMessage {
+  required bytes data = 1;
+  required bytes signature = 2;
+  required string method = 3;
+  optional string from = 4;
+  optional string to = 5;
+  optional string id = 6;
+}`;
+
+class DiscoMessage {
+  constructor(data, options = {}) {
+    if (!options.name) options.name = 'disco-message';
+    this.name = options.name;
+    this.proto = protons(proto);
+    this.codecs = options.codecs;
+    this.prefix = options.prefix;
+    
+    // TODO: check prefix
+    if (Buffer.isBuffer(data) && this.prefix) {
+      this._encoded = data;
+    } else if (Buffer.isBuffer(data)) {
+      this._buffer = data;
+      this._create(data, this.name);
+    } else if (typeof data === 'object') {
+      this._decoded = {
+        data: data.data,
+        from: data.from,
+        to: data.to
+      };
+    }
+  }
+  
+  get discoHash() {
+    return new DiscoHash(this.decoded, {name: this.name})
+  }
+  
+  get hash() {
+    return this.discoHash.digest.toString('hex')
+  }
+  
+  get decoded() {
+    return this._decoded || this.decode();
+  }
+  
+  get encoded() {
+    return this._encoded || this.encode();
+  }
+  
+  _decode(encoded) {
+    const discoCodec = new DiscoCodec(encoded.toString('hex'), this.codecs);
+    encoded = encoded.slice(discoCodec.codecBuffer.length);
+    this.name = discoCodec.name;
+    const decoded = this.proto.DiscoMessage.decode(encoded);
+    if (decoded.method) this.method = decoded.method;
+    if (decoded.id) this.id = decoded.id;
+    if (decoded.signature) this.signature = decoded.signature;
+    return { from: decoded.from, to: decoded.to, data: decoded.data }
+  }  
+  
+  _encode(decoded) {
+    decoded.method = this.method  || 'get';
+    decoded.id = this.id;
+    return Buffer.concat([this.discoHash.discoCodec.codecBuffer, this.proto.DiscoMessage.encode(decoded)])
+  }
+  
+  _create(object) {
+    if (Buffer.isBuffer(object)) {
+      object = JSON.parse(object.toString());
+    }
+    this._decoded = object;
+  }
+  
+  decode() {
+    if (this._encoded) this._decoded = this._decode(this._encoded);
+    return this._decoded;
+  }
+  
+  /**
+   * @param {string} ['dm.sig'] - signature
+   */
+  encode(signature) {
+    if (this._decoded) {
+      this._decoded.signature = signature || 'dm.sig';
+      this._encoded = this._encode(this._decoded);
+    }
+    return this._encoded;
+  }
+  
+  fromHex(hex) {
+    this._encoded = Buffer.from(hex, 'hex');
+  }
+}
+
+class Peernet extends DiscoBus {
   constructor(discoRoom, protoCall) {
+    super();
     this.dht = new DhtEarth();
     this.discoRoom = discoRoom;
     this.protocol = this.discoRoom.config.api.protocol;
@@ -570,34 +666,17 @@ class Peernet {
         hashAlg: 'keccak-512'
       }
     };
-    this.discoRoom.on('data', async data => {
+    this.discoRoom.subscribe('data', async data => {
       console.log('incoming');
       console.log({data});
       console.log(new DiscoCodec(data.toString('hex'), this.codecs));
       let message = new DiscoMessage();
       message._encoded = data;
-      message.codecs = {
-        'disco-dht': {
-          codec: '6468',
-          hashAlg: 'keccak-512'
-        },
-        'disco-data': {
-          codec: '6464',
-          hashAlg: 'keccak-512'
-        }
-      };
-      message.decode();
-      // console.log(message.discoHash.name);
-      const decoded = message.decode();
+      const decoded = message.decoded;
       
       const wallet = new MultiWallet('leofcoin:olivia');
-      // console.log(decoded.from);
       wallet.fromId(decoded.from);
-      // console.log(decoded);
-      // console.log(message);
       const signature = message.signature;
-      // console.log(message.method);
-      // console.log(decoded.data.toString());
       const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32));
       if (!verified) console.warn(`ignored message from ${decoded.from}
         reason: invalid signature`);
@@ -606,20 +685,25 @@ class Peernet {
       
       if (message.discoHash.name) {
         if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) {          
-          const peer = this.peerMap.get(message.decoded.from);
-          const data = await this.protoCall[message.discoHash.name][message.method](message);
-          if (data !== undefined) {
-            message._decoded.data = data;
-            message._decoded.to = message._decoded.from;
-            message._decoded.from = this.discoRoom.peerId;
-            const wallet = new MultiWallet('leofcoin:olivia');
-            wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
-            const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
-            message.encode(signature);
-            peer.send(message.encoded);
+          try {
+            const peer = this.peerMap.get(message.decoded.from);
+            const data = await this.protoCall[message.discoHash.name][message.method](message);
+            if (data !== undefined) {
+              message._decoded.data = data;
+              message._decoded.to = message._decoded.from;
+              message._decoded.from = this.discoRoom.peerId;
+              const wallet = new MultiWallet('leofcoin:olivia');
+              wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
+              const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
+              message.encode(signature);
+              peer.send(message.encoded);
+            }
+          } catch (e) {
+            console.error(e);
           }
           
         } else { console.log(`unsupported protocol ${message.discoHash.name}`); }
+        return
       }
     });
     return this
@@ -673,7 +757,8 @@ class Peernet {
         // console.log(node.decoded);
         console.log(data + 'node data');
         // console.log(node);
-        for (const [peerID, peer] of this.peerMap.entries()) {
+        const entries = this.peerMap.entries();
+        for (const [peerID, peer] of entries) {
           console.log(peerID, peer);
           if (peer !== undefined) {
             const onerror = error => {
@@ -740,7 +825,7 @@ class Peernet {
       peer = this.discoRoom.dial(closestPeer);
     }
     const node = new DiscoData();
-    node.create(hash);
+    node.create({ hash });
     node.encode();
     const data = node.encoded;
     let message = new DiscoMessage({
@@ -757,31 +842,16 @@ class Peernet {
     const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
     message.encode(signature);
     console.log({message}, 'sending');
-    message = await peer.request(message);
-    console.log({message});
-    
-    
-    if (!client) {
-       try {
-         client = await clientConnection({port, protocol, address});  
-       } catch (e) {
-         this.route(hash, 'get');
-         console.log({e});
-         return
-       } finally {
-         
-       }
+    try {
+      message = await peer.request(message);
+    } catch (e) {
+      console.error({e});
     }
+    providers = await this.providersFor(hash);
+    // console.log({message});
+    if (!providers || providers.length === 0) throw `nothing found for ${hash}`;
+    return globalThis.blocksStore.get(hash)
     
-    if (client) {
-      const data = {url: 'get', params: {hash}};
-      try {
-        const requested = await client.request(data);
-      } catch (e) {
-        console.log({e});
-      }
-      console.log({requested});  
-    }
 // a request is client.on & client.send combined
     
     
@@ -790,8 +860,6 @@ class Peernet {
   }
   
   async route(hash, type = 'has') {
-    console.log({hash});
-    console.log(this.discoRoom.availablePeers);
     const peers = [];
     let peer;
     for (const peer of  this.discoRoom.peerMap.values()) {
@@ -805,7 +873,6 @@ class Peernet {
       peer = peer.peer;
       
     }
-    console.log({peer, peers});
     peer.on('data', data => {
       console.log(data);
     });
@@ -889,7 +956,7 @@ class Peernet {
   }
 }
 
-class LeofcoinApi {
+class LeofcoinApi extends DiscoBus {
   get connectionMap() {
     console.log(this.discoRoom.connectionMap.entries());
     return this.discoRoom.connectionMap
@@ -898,6 +965,7 @@ class LeofcoinApi {
     return this.discoRoom.peerMap
   }
   constructor(options = { config: {}, init: true, start: true }) {
+    super();
     if (!options.config) options.config = {};
     this.config = config;
     this.account = account;
@@ -925,6 +993,8 @@ class LeofcoinApi {
     });    
     
     this.discoRoom = await new DiscoRoom(config);
+    
+    
     this.peernet = new Peernet(this.discoRoom, {
       'disco-dht': {
         has: async message => {
@@ -985,11 +1055,17 @@ class LeofcoinApi {
       'disco-data': {
         get: async message => {
           const node = new DiscoData(message.decoded.data);
-          console.log(node.decoded);
           node.decode();
-          console.log(message.decoded);
-          const data = await this.get(message.decoded.data);
-          console.log(data);
+          if (!node.response) {
+            const data = await this.get(node.hash.toString());
+            node.data = data.data ? Buffer.from(data.data) : data;
+            node.response = true;
+            node.encode();
+            return node.encoded
+          } else {
+            this.put(node.hash.toString(), node.data.toString());
+            return undefined
+          }
           // return this.get(message.decoded)
         },
         put: message => {

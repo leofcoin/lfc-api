@@ -4,7 +4,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var PeerInfo = _interopDefault(require('disco-peer-info'));
 var connection = _interopDefault(require('socket-request-client'));
-var PubSub = _interopDefault(require('little-pubsub'));
+var DiscoBus = _interopDefault(require('@leofcoin/disco-bus'));
 var ip = require('ip');
 var fetch = _interopDefault(require('node-fetch'));
 var Peer$1 = _interopDefault(require('simple-peer'));
@@ -44,10 +44,10 @@ const getAddress = async () => {
 
 const wss = typeof window !== 'undefined';
 
-class DiscoBase {
+class DiscoBase extends DiscoBus {
   constructor(config = {}) {
-    this.config = config;    
-    this.pubsub = new PubSub();
+    super();
+    this.config = config;
     
     if (!this.config.discovery || !this.config.discovery.peers) throw new Error('expected config.discovery.peers to be defined')
     if (!this.config.identity || !this.config.identity.peerId) throw new Error('expected config.identity.peerId to be defined')
@@ -82,12 +82,13 @@ class DiscoBase {
   }
   
   peerDiscovered(info) {
-    this.pubsub.publish('peer:discoverd', info);
+    debug(`discovered: ${info.peerId}`);
+    this.publish('peer:discoverd', info);
   }
   
   peerConnected(info) {
-    debug(`connected to ${info.peerId}`);
-    this.pubsub.publish('peer:connected', info);
+    debug(`connected: ${info.peerId}`);
+    this.publish('peer:connected', info);
   }
   
   async connectStar(peerInfo) {
@@ -139,7 +140,7 @@ class DiscoBase {
         const client = await connection({port, address, protocol, peerId, wss});
         this.clientMap.set(peerInfo.peerId, client);
       } catch (e) {
-        this.pubsub.publish('error', e);
+        this.publish('error', e);
       }
     }
     for (const client of this.clientMap.values()) {
@@ -212,7 +213,7 @@ class DiscoBase {
       } catch (e) {
         
       }      
-      this.pubsub.publish('join', info);
+      this.publish('peer:joined', info);
     }
   }
   
@@ -222,16 +223,12 @@ class DiscoBase {
     if (this.peerMap.has(info.peerId)) {
       this.peerMap.delete(info.peerId);
       this.clientMap.delete(info.peerId);
-      this.pubsub.publish('leave', info);
+      this.publish('peer:left', info);
     }
   }
   
-  on(event, fn) {
-    this.pubsub.subscribe(event, fn);
-  }
-  
   _onError(error) {
-    if (this.pubsub.subscribers) return this.pubsub.publish('error', error)
+    if (this.subscribers) return this.publish('error', error)
     // console.error(error);
   }
 }
@@ -280,11 +277,15 @@ var Peer = ({peerInfo, signal, timeout = 1000, requestTimeOut = 5000}) => {
     request: (message) => new Promise((resolve, reject) => {
       let resolved;
       const messageInterface = message;
-      const id = message.id || message.discoHash.toBs32();
+      let id = message.id || message.discoHash.toBs32();
+      
+      if (message.signature) message.encode(message.signature)
       
       const once = message => {
         messageInterface._encoded = message;
         messageInterface.decode();
+        id = messageInterface.id || messageInterface.discoHash.toBs32();
+        console.log(messageInterface.id, id);
         if (messageInterface.id === id) {
           resolved = true;
           resolve(message);
@@ -405,7 +406,6 @@ class DiscoRoom extends DiscoBase {
     if (this.peerId === peerInfo.peerId) return
     if (this.availablePeers.has(peerInfo.peerId)) return;
     this.availablePeers.set(peerInfo.peerId, peerInfo);
-    console.log(peerInfo.peerId + ' discoverd');
 
     super.peerDiscovered(peerInfo);
     this.dial(peerInfo);
@@ -416,7 +416,7 @@ class DiscoRoom extends DiscoBase {
   peerConnected(info, peer) {
     if (info.peerId) this.peerMap.set(info.peerId, peer);
     peer.on('data', data => {
-      this.pubsub.publish('data', data);
+      this.publish('data', data);
     });
     super.peerConnected(info);
   }

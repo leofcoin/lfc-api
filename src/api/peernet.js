@@ -3,15 +3,17 @@ import { distanceInKmBetweenEarthCoordinates, parseAddress } from './../utils'
 import clientConnection from 'socket-request-client';
 import Dht from './dht-earth';
 import proto from './proto'
-import DiscoMessage from 'disco-message';
+import DiscoMessage from './../../node_modules/disco-message/src/message.js';
 import DiscoData from 'disco-data';
 import DiscoCodec from 'disco-codec';
 import DiscoHash from 'disco-hash';
 import DiscoDHTData from 'disco-dht-data';
 import MultiWallet from 'multi-wallet';
+import DiscoBus from '@leofcoin/disco-bus';
 
-export default class Peernet {
+export default class Peernet extends DiscoBus {
   constructor(discoRoom, protoCall) {
+    super()
     this.dht = new Dht()
     this.discoRoom = discoRoom;
     this.protocol = this.discoRoom.config.api.protocol
@@ -27,34 +29,17 @@ export default class Peernet {
         hashAlg: 'keccak-512'
       }
     }
-    this.discoRoom.on('data', async data => {
+    this.discoRoom.subscribe('data', async data => {
       console.log('incoming');
       console.log({data});
       console.log(new DiscoCodec(data.toString('hex'), this.codecs));
       let message = new DiscoMessage()
       message._encoded = data
-      message.codecs = {
-        'disco-dht': {
-          codec: '6468',
-          hashAlg: 'keccak-512'
-        },
-        'disco-data': {
-          codec: '6464',
-          hashAlg: 'keccak-512'
-        }
-      }
-      message.decode()
-      // console.log(message.discoHash.name);
-      const decoded = message.decode();
+      const decoded = message.decoded;
       
       const wallet = new MultiWallet('leofcoin:olivia')
-      // console.log(decoded.from);
       wallet.fromId(decoded.from)
-      // console.log(decoded);
-      // console.log(message);
       const signature = message.signature
-      // console.log(message.method);
-      // console.log(decoded.data.toString());
       const verified = wallet.verify(signature, message.discoHash.digest.slice(0, 32))
       if (!verified) console.warn(`ignored message from ${decoded.from}
         reason: invalid signature`);
@@ -63,20 +48,25 @@ export default class Peernet {
       
       if (message.discoHash.name) {
         if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) {          
-          const peer = this.peerMap.get(message.decoded.from)
-          const data = await this.protoCall[message.discoHash.name][message.method](message)
-          if (data !== undefined) {
-            message._decoded.data = data
-            message._decoded.to = message._decoded.from
-            message._decoded.from = this.discoRoom.peerId
-            const wallet = new MultiWallet('leofcoin:olivia')
-            wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
-            const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
-            message.encode(signature)
-            peer.send(message.encoded)
+          try {
+            const peer = this.peerMap.get(message.decoded.from)
+            const data = await this.protoCall[message.discoHash.name][message.method](message)
+            if (data !== undefined) {
+              message._decoded.data = data
+              message._decoded.to = message._decoded.from
+              message._decoded.from = this.discoRoom.peerId
+              const wallet = new MultiWallet('leofcoin:olivia')
+              wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
+              const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
+              message.encode(signature)
+              peer.send(message.encoded)
+            }
+          } catch (e) {
+            console.error(e);
           }
           
         } else { console.log(`unsupported protocol ${message.discoHash.name}`) }
+        return
       }
     })
     return this
@@ -130,7 +120,8 @@ export default class Peernet {
         // console.log(node.decoded);
         console.log(data + 'node data');
         // console.log(node);
-        for (const [peerID, peer] of this.peerMap.entries()) {
+        const entries = this.peerMap.entries()
+        for (const [peerID, peer] of entries) {
           console.log(peerID, peer);
           if (peer !== undefined) {
             const onerror = error => {
@@ -197,7 +188,7 @@ export default class Peernet {
       peer = this.discoRoom.dial(closestPeer)
     }
     const node = new DiscoData()
-    node.create(hash)
+    node.create({ hash })
     node.encode()
     const data = node.encoded
     let message = new DiscoMessage({
@@ -214,31 +205,16 @@ export default class Peernet {
     const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
     message.encode(signature)
     console.log({message}, 'sending');
-    message = await peer.request(message)
-    console.log({message});
-    
-    
-    if (!client) {
-       try {
-         client = await clientConnection({port, protocol, address})  
-       } catch (e) {
-         this.route(hash, 'get')
-         console.log({e});
-         return
-       } finally {
-         
-       }
+    try {
+      message = await peer.request(message)
+    } catch (e) {
+      console.error({e});
     }
+    providers = await this.providersFor(hash)
+    // console.log({message});
+    if (!providers || providers.length === 0) throw `nothing found for ${hash}`;
+    return globalThis.blocksStore.get(hash)
     
-    if (client) {
-      const data = {url: 'get', params: {hash}}
-      try {
-        const requested = await client.request(data);
-      } catch (e) {
-        console.log({e});
-      }
-      console.log({requested});  
-    }
 // a request is client.on & client.send combined
     
     
@@ -247,8 +223,6 @@ export default class Peernet {
   }
   
   async route(hash, type = 'has') {
-    console.log({hash});
-    console.log(this.discoRoom.availablePeers);
     const peers = []
     let peer;
     for (const peer of  this.discoRoom.peerMap.values()) {
@@ -262,7 +236,6 @@ export default class Peernet {
       peer = peer.peer
       
     }
-    console.log({peer, peers});
     peer.on('data', data => {
       console.log(data);
     })
