@@ -42,7 +42,7 @@ const DEFAULT_QR_OPTIONS = {
 
 const DEFAULT_BROWSER_DISCOVERY_CONFIG = {
     // peer addresses to discover other peers
-    peers: ['star.leofcoin.org/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star',],
+    peers: ['star.leofcoin.org/8080/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star',],
     // disco-star configuration see https://github.com/leofcoin/disco-star
     star: {
       protocol: 'disco-star',
@@ -427,10 +427,12 @@ var versions = {
 			"star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
 		]
 	}
+},
+	"1.0.38": {
 }
 };
 
-var version = "1.0.37";
+var version = "1.0.39";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
