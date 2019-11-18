@@ -8,7 +8,7 @@
   "1.0.4": {
     "gateway": {
       "protocol": "leofcoin",
-      "port": 8080
+      "port": 8585
     },
     "api": {
       "protocol": "leofcoin-api",

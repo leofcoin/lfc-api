@@ -1,6 +1,6 @@
 {
   "name": "lfc-api",
-  "version": "1.0.39",
+  "version": "1.0.40-alpha.1",
   "description": "",
   "main": "index.js",
   "browser": "browser.js",
@@ -27,11 +27,12 @@
   "homepage": "https://github.com/leofcoin/lfc-api#readme",
   "dependencies": {
     "@leofcoin/disco-bus": "^1.0.4",
-    "disco-codec": "^1.0.6",
+    "disco-codec": "^1.0.8",
     "disco-data": "^1.0.9",
     "disco-dht-data": "^1.1.2",
-    "disco-hash": "^1.1.8",
-    "disco-message": "^1.3.6",
+    "disco-folder": "^1.0.1",
+    "disco-hash": "^1.1.10",
+    "disco-message": "^1.3.8",
     "disco-room": "^2.3.1",
     "disco-server": "^1.0.3",
     "lfc-storage": "^1.6.2",
@@ -43,7 +44,7 @@
   },
   "devDependencies": {
     "browserify": "^16.5.0",
-    "rollup": "^1.27.0",
+    "rollup": "^1.27.4",
     "rollup-plugin-commonjs": "^9.3.4",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-modify": "^3.0.0",

@@ -7,7 +7,7 @@ export default async config => {
   const start = Object.keys(versions).indexOf(config.version);
   const end = Object.keys(versions).indexOf(version);
   // get array of versions to upgrade to
-  const _versions = Object.keys(versions).slice(start, end + 1)
+  const _versions = Object.keys(versions).slice(start, end)
   console.log({ver: versions[version]});
   // apply config for each greater version
   // until current version is applied

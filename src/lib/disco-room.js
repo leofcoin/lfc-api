@@ -277,15 +277,13 @@ var Peer = ({peerInfo, signal, timeout = 1000, requestTimeOut = 5000}) => {
     request: (message) => new Promise((resolve, reject) => {
       let resolved;
       const messageInterface = message;
-      let id = message.id || message.discoHash.toBs32();
+      let id = message.id ? message.id : message.discoHash.toBs32();
       
       if (message.signature) message.encode(message.signature)
       
       const once = message => {
         messageInterface._encoded = message;
         messageInterface.decode();
-        id = messageInterface.id || messageInterface.discoHash.toBs32();
-        console.log(messageInterface.id, id);
         if (messageInterface.id === id) {
           resolved = true;
           resolve(message);

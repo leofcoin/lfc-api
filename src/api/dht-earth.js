@@ -16,12 +16,11 @@ export default class DhtEarth {
   async getCoordinates(provider) {
     const {address} = parseAddress(provider)
     console.log({address});
-    const request = `https://tools.keycdn.com/geo.json?host=${address}`
+    const request = `http://ip-api.com/json/${address}`
     let response = await fetch(request)
     response = await response.json()
-    console.log(response);
-    const { latitude, longitude } = response.data.geo;
-    return { latitude, longitude }
+    const { lat, lon } = response;
+    return { latitude: lat, longitude: lon }
   }
   
   /**
