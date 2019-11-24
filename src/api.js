@@ -5,12 +5,15 @@ import peernet from './api/peernet';
 import { expected, getAddress, debug, interfaceForCodecName } from './utils.js';
 import DiscoRoom from 'disco-room';
 import DiscoData from 'disco-data';
-import DiscoDHTData from 'disco-dht-data';
+import DiscoDHTData from './../node_modules/disco-dht-data/src/dht-data';
 import PeerInfo from 'disco-peer-info';
 import DiscoBus from '@leofcoin/disco-bus';
 import DiscoLink from './../node_modules/disco-folder/link';
 import DiscoFolder from 'disco-folder';
+import DiscoFile from './../node_modules/disco-file/src/file';
 import DiscoCodec from 'disco-codec';
+import DiscoGate from 'disco-gate';
+import DiscoServer from 'disco-server';
 import { join } from 'path';
 
 export default class LeofcoinApi extends DiscoBus {
@@ -26,7 +29,6 @@ export default class LeofcoinApi extends DiscoBus {
     if (!options.config) options.config = {}
     this.config = config;
     this.account = account;
-    console.log(options.init);
     if (options.init) return this._init(options)
   }
   
@@ -47,33 +49,32 @@ export default class LeofcoinApi extends DiscoBus {
     Object.defineProperty(this, 'peerId', {
       value: config.identity.peerId,
       writable: false
-    })    
+    })
+    
+    if (typeof window === 'undefined') {
+      this.gateway = new DiscoGate(config.gateway.port, this.get.bind(this))  
+    }
+    
     
     this.discoRoom = await new DiscoRoom(config)
     
-    
-    this.peernet = new peernet(this.discoRoom, {
+    const apiMethods = {
       'disco-dht': {
         has: async message => {
           try {
             const node = new DiscoDHTData()
-            console.log(message.decoded.data);
-            node._encoded = message.decoded.data
+            node.fromEncoded(message.decoded.data)
             node.decode()
-            console.log(await globalThis.blocksStore.has(node.decoded.data.hash.toString()));
-            const data = node.decoded.data
-            console.log(node.decoded.data.hash);
-              console.log(data.hash.toString());
-            if (data.value) {
-              console.log(data.value);
-              const info = this.discoRoom.availablePeers.get(message.decoded.from)
-              this.peernet.addProvider(info, data.hash.toString())
+            const { value, hash } = node.data
+            if (value) {
+              const info = this.discoRoom.availablePeers.get(message.from)
+              this.peernet.addProvider(info, hash.toString())
               return undefined
             } else {
               
-              const has = await globalThis.blocksStore.has(node.decoded.data.hash.toString())
-              console.log({has});
-              node._decoded.data.value = has
+              const has = await globalThis.blocksStore.has(hash.toString())
+              node.value = has
+              node.decoded.value = has
               node.encode()
               return node.encoded
             }
@@ -109,20 +110,17 @@ export default class LeofcoinApi extends DiscoBus {
       'disco-data': {
         get: async message => {
           console.log('decode');
-          const node = new DiscoData(message.decoded.data)
+          const node = new DiscoData()
+          node.fromEncoded(message.data)
           node.decode()
-          console.log(node);
           if (!node.response) {
             const data = await blocksStore.get(node.hash.toString())
-            console.log(data);
             node.data = data.data ? Buffer.from(data.data) : data
             node.response = true
-            console.log('encode');
             node.encode()
-            console.log(node);
             return node.encoded
           } else {
-            await this.put(node.hash.toString(), node.data.toString())
+            await this.put(node.hash.toString(), node.data)
             return undefined
           }
           // return this.get(message.decoded)
@@ -131,7 +129,23 @@ export default class LeofcoinApi extends DiscoBus {
           
         }
       }
-    });
+    }
+    this.peernet = new peernet(this.discoRoom, apiMethods);
+    console.log(config);
+    for (const key of Array.from(config.transports)) {
+      const [protocol, port] = key.split(':')
+      if (protocol === 'disco-ws' && typeof window === 'undefined') {
+        this[`_${protocol.replace('disco-', '')}Transport`] = new DiscoServer({port, protocol}, {
+          'data': (data, p) => {
+            if (data.type === 'Buffer') data = Buffer.from(data.data)
+            console.log({data, p});
+            this.discoRoom.publish('data', data)
+          }
+        })  
+      }
+      
+    }
+    console.log(config.transports);
     
     
   
@@ -247,40 +261,14 @@ export default class LeofcoinApi extends DiscoBus {
     if (!hash) throw expected(['hash: String'], { hash })
     try {
       data = await globalThis.blocksStore.get(hash)
-      const codec = new DiscoCodec()
-      codec.fromBs58(data)
-      if (codec.name === 'disco-folder') {
-        const folder = new DiscoFolder()
-        folder.fromBs58(data)
-        return folder.encoded
-      }
+      if (data) return data
     } catch (e) {
       if (!data) {
         const providers = await this.peernet.providersFor(hash)
         console.log({providers});
-        data = await this.peernet.get(hash)
-        console.log({data});
-        const codec = new DiscoCodec()
-        codec.fromBs58(data)
-        if (codec.name === 'disco-folder') {
-          const folder = new DiscoFolder()
-          folder.fromBs58(data)
-          return folder.encoded
+        if (providers && providers.size > 0) {
+          data = await this.peernet.get(hash)
         }
-        if (data) return data;
-        // blocksStore.put(hash, data)
-        if (providers && providers.length > 0) {
-          data = this.peernet.get(hash)
-          await blocksStore.put(hash, data)
-          const codec = new DiscoCodec()
-          codec.fromBs58(data)
-          if (codec.name === 'disco-folder') {
-            const folder = new DiscoFolder()
-            folder.fromBs58(data)
-            return folder.encoded
-          }
-        }
-        
       }  
     }
     
@@ -316,13 +304,19 @@ export default class LeofcoinApi extends DiscoBus {
         let name;
         for (const file of input.files) {
           size += file.size
-          if (!name) {
+          // if (!name) {
             name = file.webkitRelativePath.match(/^(\w*)/g)[0]
-          }
+            name = file.webkitRelativePath.replace(`${name}/`, '')
+          // }
           jobs.push(new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = ({target}) => resolve({name: file.name, data: Buffer.from(target.result)});
-            reader.readAsText(file)
+            const a = name
+            const reader = new FileReader()      
+            reader.onload = ({target}) => {
+              let data = target.result;
+              data = Buffer.from(target.result)
+              resolve({name: a, data})
+            };
+            reader.readAsBinaryString(file)
           }))
         }
         const result = await Promise.all(jobs)
@@ -332,17 +326,19 @@ export default class LeofcoinApi extends DiscoBus {
           // await api.put()
           console.log(data);
           const link = new DiscoLink()
-          link.create({name, data})
-          link.encode()
-          const hash = link.discoHash.toBs58()
-          await this.put(hash, data)
-          _links.push({name, hash})
+          const file = new DiscoFile()
+          file.create({data, name})
+          file.encode()
+          // link.create({name, data: file.encoded})
+          const hash = file.discoHash.toBs58()
+          await this.put(hash, file.encoded)
+          _links.push({ name, hash })
         }
         const discoFolder = new DiscoFolder()
         discoFolder.create({name, links: _links})
         discoFolder.encode()
         const folderHash = discoFolder.discoHash.toBs58()
-        await this.put(folderHash, discoFolder.toBs58())
+        await this.put(folderHash, discoFolder.encoded)
         // console.log(result);
         resolve(folderHash)
       }
@@ -366,15 +362,21 @@ export default class LeofcoinApi extends DiscoBus {
     const _links = []
     for await (const path of files) {
       const data = await readFile(join(folder, path))
-      const discoLink = new DiscoLink()
-      discoLink.create({name: path, data})
-      _links.push({name: path, hash: discoLink.discoHash.toBs58()})
+      console.log(data);
+      const link = new DiscoLink()
+      const file = new DiscoFile()
+      file.create({data, name: path})
+      file.encode()
+      // link.create({name: path, data: file.encoded})
+      const hash = file.discoHash.toBs58()
+      await this.put(hash, file.encoded)
+      _links.push({name: path, hash })
     }
     const discoFolder = new DiscoFolder()
     discoFolder.create({name: folder, links: _links})
     discoFolder.encode();
     const folderHash = discoFolder.discoHash.toBs58()
-    await this.put(folderHash, discoFolder.toBs58())
+    await this.put(folderHash, discoFolder.encoded)
     return folderHash
   }
 }

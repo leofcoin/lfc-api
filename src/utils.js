@@ -74,20 +74,53 @@ const parseAddress = address => {
 }
 
 const lastFetched = {
-  time: 0,
-  address: undefined
+  address: {
+    value: undefined,
+    timestamp: 0
+  },
+  ptr: {
+    value: undefined,
+    timestamp: 0
+  }
 }
 const getAddress = async () => {
-  let {address, time} = lastFetched
+  const {address} = lastFetched
   const now = Math.round(new Date().getTime() / 1000);
-  if (now - time > 300) {
-    address = await fetch('https://icanhazip.com/')
-    address = await address.text()
+  if (now - address.timestamp > 300) {
+    address.value = await fetch('https://ipv6.icanhazip.com/')
+    address.value = await address.value.text()
+    address.timestamp = Math.round(new Date().getTime() / 1000);  
     lastFetched.address = address;
-    lastFetched.time = Math.round(new Date().getTime() / 1000);  
   }
   
-  return address
+  return address.value
+}
+
+/**
+ * get ptr (public hostname) for ip
+ * @params {string} ip - ip
+ */
+const getPtrFor = async ip => {
+  let value = await fetch('https://ipv6.icanhazptr.com/')
+  value = await value.text()
+  console.log(value);
+  return value
+}
+
+/**
+ * ptr public hostname
+ * @params {string} ip - ip
+ */
+const getPtr = async () => {
+  const {ptr} = lastFetched
+  const now = Math.round(new Date().getTime() / 1000);
+  if (now - ptr.timestamp > 300) {
+    const address = await getAddress()
+    ptr.value = await getPtrFor(address)
+    ptr.timestamp = Math.round(new Date().getTime() / 1000);  
+    lastFetched.ptr = ptr;
+  }
+  return ptr.value
 }
 
 const debug = text => {

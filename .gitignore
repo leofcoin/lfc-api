@@ -1,1 +1,4 @@
 node_modules
+/browser.js
+/commonjs.js
+/dist

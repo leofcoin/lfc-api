@@ -41,7 +41,7 @@ console.log(c);
     await mm.put(dataNode.discoHash.toBs58(), data)  
   })
   
-  const doc = await mm.addFolder('doc')
+  const doc = await mm.addFolder('D:/Workspace/altered-dimension/www')
   console.log({doc});
   
   let hello = await mm.get('hello')

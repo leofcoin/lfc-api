@@ -50,7 +50,7 @@ const DEFAULT_CONFIG = {
     // environmental
   },
   api: {
-    protocol: 'leofcoin-api',
+    protocol: 'disco-api',
     port: 4000
   },
   storage: {
@@ -60,14 +60,19 @@ const DEFAULT_CONFIG = {
     database: 'database' // path to database
   },
   gateway: {
-    protocol: 'leofcoin',
-    port: 8080
+    protocol: 'disco-gate',
+    port: 8585
   },
+  transports: [
+    'disco-wrtc:5000',
+    'disco-ws:5005',
+    'disco-tcp:5010'
+  ],
   services: [
     'disco-star',
     'disco-room'
   ],
-  version: '1.0.36'
+  version: '1.0.40-alpha.5'
 }
 
 export { DEFAULT_CONFIG, DEFAULT_QR_OPTIONS, DEFAULT_NODE_DISCOVERY_CONFIG, DEFAULT_BROWSER_DISCOVERY_CONFIG }
