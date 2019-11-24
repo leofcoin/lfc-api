@@ -22,8 +22,8 @@ var protons$2 = _interopDefault(require('protons'));
 var bs32$1 = _interopDefault(require('bs32'));
 var bs58$1 = _interopDefault(require('bs58'));
 var isHex$1 = _interopDefault(require('is-hex'));
-var DiscoFolder$1 = _interopDefault(require('disco-folder'));
-var fs = require('fs');
+var DiscoFolder = _interopDefault(require('disco-folder'));
+var path = require('path');
 
 var config = {
   get: async (key) => {
@@ -261,7 +261,7 @@ const account = {
 // const level = require('level');
 const LevelStore = require('datastore-level');
 const { homedir } = require('os');
-const { join: join$1 } = require('path');
+const { join } = require('path');
 const Key = require('interface-datastore').Key;
 const {readdirSync, mkdirSync} = require('fs');
 
@@ -270,12 +270,12 @@ class LeofcoinStorage {
   constructor(path, root = '.leofcoin') {
     this.root = homedir();
     if (readdirSync) try {
-      readdirSync(join$1(this.root, root));
+      readdirSync(join(this.root, root));
     } catch (e) {
-      if (e.code === 'ENOENT') mkdirSync(join$1(this.root, root));
+      if (e.code === 'ENOENT') mkdirSync(join(this.root, root));
       else throw e
     }
-    this.db = new LevelStore(join$1(this.root, root, path));
+    this.db = new LevelStore(join(this.root, root, path));
     // this.db = level(path, { prefix: 'lfc-'})
   }
   
@@ -417,27 +417,13 @@ var versions = {
 	discovery: {
 	}
 },
-	"1.0.36": {
-	discovery: {
-		peers: [
-			"star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
-		]
-	}
-},
-	"1.0.37": {
-	discovery: {
-		peers: [
-			"star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
-		]
-	}
-},
 	"1.0.38": {
 },
 	"1.0.39": {
 }
 };
 
-var version = "1.0.40";
+var version = "1.0.40-alpha.1";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -838,6 +824,7 @@ class Peernet extends DiscoBus {
     } else {
       peer = this.discoRoom.dial(closestPeer);
     }
+    const codec = new DiscoCodec$1(hash);
     const node = new DiscoData();
     node.create({ hash });
     node.encode();
@@ -1068,29 +1055,26 @@ class FormatInterface {
   }
 }
 
-class DiscoFolder extends FormatInterface {
+class DiscoLink extends FormatInterface {
   constructor(buffer) {
     super(buffer, protons(proto$1).DiscoLink);
     this.codecName = 'disco-link';
   }
   
   get discoHash() {
-    return new DiscoHash(this.decoded, { name: this.codecName })
+    return new DiscoHash(this.data, { name: this.codecName })
   }
   
   decode() {
     super.decode();
     this.data = this.decoded.data;
     this.hash = this.decoded.hash;
-    this.response = this.decoded.response;
   }
   
   encode() {
     this.decoded = {
       data: this.data,
-      name: this.name,
-      response: this.response,
-      links: this.links
+      hash: this.hash
     };
     super.encode();
   }
@@ -1100,15 +1084,15 @@ class DiscoFolder extends FormatInterface {
       data = JSON.parse(data.toString());
     }
     this.data = data.data;
-    this.name = data.name;
-    this.response = data.response;
-    this.links = data.links;
-    this.decoded = data;
+    this.hash = data.hash;
+    
+    this.decoded = this.data;
     if (!this.hash) this.hash = this.discoHash.toBs58();
+    
   }
 }
 
-var link = DiscoFolder;
+var link = DiscoLink;
 
 class LeofcoinApi extends DiscoBus {
   get connectionMap() {
@@ -1208,13 +1192,18 @@ class LeofcoinApi extends DiscoBus {
       },
       'disco-data': {
         get: async message => {
+          console.log('decode');
           const node = new DiscoData(message.decoded.data);
           node.decode();
+          console.log(node);
           if (!node.response) {
-            const data = await this.get(node.hash.toString());
+            const data = await blocksStore.get(node.hash.toString());
+            console.log(data);
             node.data = data.data ? Buffer.from(data.data) : data;
             node.response = true;
+            console.log('encode');
             node.encode();
+            console.log(node);
             return node.encoded
           } else {
             await this.put(node.hash.toString(), node.data.toString());
@@ -1342,19 +1331,32 @@ class LeofcoinApi extends DiscoBus {
     if (!hash) throw expected(['hash: String'], { hash })
     try {
       data = await globalThis.blocksStore.get(hash);
-      console.log({data});
+      const codec = new DiscoCodec$1();
+      codec.fromBs58(data);
+      if (codec.name === 'disco-folder') {
+        const folder = new DiscoFolder();
+        folder.fromBs58(data);
+        return folder.decoded
+      }
     } catch (e) {
       if (!data) {
         const providers = await this.peernet.providersFor(hash);
         console.log({providers});
         data = await this.peernet.get(hash);
         console.log({data});
+        const codec = new DiscoCodec$1();
+        codec.fromBs58(data);
+        if (codec.name === 'disco-folder') {
+          const folder = new DiscoFolder();
+          folder.fromBs58(data);
+          return folder.decoded
+        }
         if (data) return data;
         // blocksStore.put(hash, data)
         if (providers && providers.length > 0) {
           data = this.peernet.get(hash);
           console.log(data);
-          blocksStore.put(hash, data);
+          await blocksStore.put(hash, data);
         }
         
       }  
@@ -1380,46 +1382,81 @@ class LeofcoinApi extends DiscoBus {
   }
   
   async _addFolder(folder, links) {
-    const _links = [];
-    for await (const { name, data } of links) {
-      const discoLink = new link();
-      discoLink.create({name: name, data: data});
-      const hash = discoLink.discoHash.toBs58();
-      console.log(hash);
-      await this.put(hash, data);
-      console.log('put');
-      _links.push({name: name, hash });
-    }
-    const discoFolder = new DiscoFolder$1();
-    console.log('folder');
-    console.log(folder, _links);
-    discoFolder.create({name: folder, links: _links});
-    console.log('create');
-    discoFolder.encode();
-    console.log('encoded');
-    const folderHash = discoFolder.toBs58();
-    console.log(folderHash);
-    await this.put(folderHash, _links);
-    return folderHash
+    const input = document.createElement('input');
+    input.webkitdirectory = true;
+    input.directory = true;
+    input.multiple = true;
+    input.type = 'file';
+    const change = new Promise((resolve, reject) => {
+      input.onchange = async () => {
+        const jobs = [];
+        console.log(input.files);
+        let size = 0;
+        let name;
+        for (const file of input.files) {
+          size += file.size;
+          if (!name) {
+            name = file.webkitRelativePath.match(/^(\w*)/g)[0];
+            console.log(name);
+          }
+          jobs.push(new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = ({target}) => resolve({name: file.name, data: target.result});
+            reader.readAsArrayBuffer(file);
+          }));
+        }
+        const result = await Promise.all(jobs);
+        console.log(result);
+        const _links = [];
+        for await (const { name, data } of result) {
+          // await api.put()
+          const link$1 = new link();
+          console.log(name, data);
+          link$1.create({name, data});
+          link$1.encode();
+          const hash = link$1.discoHash.toBs58();
+          await this.put(hash, data);
+          _links.push({name, hash});
+        }
+        const discoFolder = new DiscoFolder();
+        console.log(discoFolder);
+        discoFolder.create({name, links: _links});
+        console.log(discoFolder);
+        discoFolder.encode();
+        const folderHash = discoFolder.discoHash.toBs58();
+        await this.put(folderHash, discoFolder.toBs58());
+        // console.log(result);
+        resolve(folderHash);
+      };
+    });
+    document.head.appendChild(input);
+    input.click();
+    return await change
+    // await this.put(folderHash, _links)
+    // return folderHash
   }
   
   async addFolder(folder, links) {
-    if (typeof window !== undefined) {
+    if (typeof window !== 'undefined') {
       return await this._addFolder(folder, links)
     }
-    const files = await fs.readdir(folder);
+    const fs = require('fs');
+    const { promisify } = require('util');
+    const readdir = promisify(fs.readdir);
+    const readFile = promisify(fs.readFile);
+    const files = await readdir(folder);
     const _links = [];
-    for await (const path of files) {
-      const data = await fs.readFile(join(folder, path));
+    for await (const path$1 of files) {
+      const data = await readFile(path.join(folder, path$1));
       const discoLink = new link();
-      discoLink.create({name: path, data: data});
-      _links.push({name: path, hash: discoLink.discoHash.toBs58()});
+      discoLink.create({name: path$1, data});
+      _links.push({name: path$1, hash: discoLink.discoHash.toBs58()});
     }
-    const discoFolder = new discoFolder();
+    const discoFolder = new DiscoFolder();
     discoFolder.create({name: folder, links: _links});
     discoFolder.encode();
-    const folderHash = discoFolder.toBs58();
-    await this.put(folderHash, _links);
+    const folderHash = discoFolder.discoHash.toBs58();
+    await this.put(folderHash, discoFolder.toBs58());
     return folderHash
   }
 }

@@ -1,5 +1,6 @@
 import ip from 'ip';
 import fetch from 'node-fetch';
+import hyphenate from './../node_modules/backed/src/utils/hyphenate.js';
 import { DEFAULT_CONFIG, DEFAULT_NODE_DISCOVERY_CONFIG, DEFAULT_BROWSER_DISCOVERY_CONFIG } from './constants';
 
 const expected = (expected, actual) => {

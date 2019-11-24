@@ -187,6 +187,7 @@ export default class Peernet extends DiscoBus {
     } else {
       peer = this.discoRoom.dial(closestPeer)
     }
+    const codec = new DiscoCodec(hash)
     const node = new DiscoData()
     node.create({ hash })
     node.encode()

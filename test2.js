@@ -41,5 +41,8 @@ console.log(c);
     await mm.put(dataNode.discoHash.toBs58(), data)  
   })
   
+  const doc = await mm.addFolder('doc')
+  console.log({doc});
+  
   let hello = await mm.get('hello')
 })

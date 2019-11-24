@@ -55,20 +55,6 @@
   "1.0.26": {
     "discovery": {}
   },
-  "1.0.36": {
-    "discovery": {
-      "peers": [
-        "star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
-      ]
-    }
-  },
-  "1.0.37": {
-    "discovery": {
-      "peers": [
-        "star.leofcoin.org/5000/3D1fftaVdwyzpmeSRPvgFGuvVo9v8QZKu1MfSSA1mRcxtfbUnt6KxW/disco-star"
-      ]
-    }
-  },
   "1.0.38": {},
   "1.0.39": {}
 }
