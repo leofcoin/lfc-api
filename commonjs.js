@@ -423,7 +423,7 @@ var versions = {
 }
 };
 
-var version = "1.0.40-alpha.1";
+var version = "1.0.40-alpha.3";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -767,17 +767,20 @@ class Peernet extends DiscoBus {
             let result;
             try {
               console.log({peerID});
+              if (peerID !== this.discoRoom.peerId) {
+                let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs });
+                message.method = 'has';
+                console.log(message.discoHash.name);
+                const wallet = new MultiWallet('leofcoin:olivia');   
+                wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
+                const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
+                message.encode(signature);
+                message = await peer.request(message);
+                console.log({message});
+                console.log('m result');  
+              }
               
-              let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs });
-              message.method = 'has';
-              console.log(message.discoHash.name);
-              const wallet = new MultiWallet('leofcoin:olivia');   
-              wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia');
-              const signature = wallet.sign(message.discoHash.digest.slice(0, 32));
-              message.encode(signature);
-              message = await peer.request(message);
-              console.log({message});
-              console.log('m result');
+              
             } catch (error) {
               console.log({error});
             }
@@ -1142,10 +1145,8 @@ class LeofcoinApi extends DiscoBus {
             node._encoded = message.decoded.data;
             node.decode();
             console.log(await globalThis.blocksStore.has(node.decoded.data.hash.toString()));
-            console.log(node.decoded);
             const data = node.decoded.data;
             console.log(node.decoded.data.hash);
-              console.log(data.value);
               console.log(data.hash.toString());
             if (data.value) {
               console.log(data.value);
@@ -1156,7 +1157,6 @@ class LeofcoinApi extends DiscoBus {
               
               const has = await globalThis.blocksStore.has(node.decoded.data.hash.toString());
               console.log({has});
-              console.log(node.encoded);
               node._decoded.data.value = has;
               node.encode();
               return node.encoded
@@ -1336,7 +1336,7 @@ class LeofcoinApi extends DiscoBus {
       if (codec.name === 'disco-folder') {
         const folder = new DiscoFolder();
         folder.fromBs58(data);
-        return folder.decoded
+        return folder
       }
     } catch (e) {
       if (!data) {
@@ -1349,14 +1349,20 @@ class LeofcoinApi extends DiscoBus {
         if (codec.name === 'disco-folder') {
           const folder = new DiscoFolder();
           folder.fromBs58(data);
-          return folder.decoded
+          return folder
         }
         if (data) return data;
         // blocksStore.put(hash, data)
         if (providers && providers.length > 0) {
           data = this.peernet.get(hash);
-          console.log(data);
           await blocksStore.put(hash, data);
+          const codec = new DiscoCodec$1();
+          codec.fromBs58(data);
+          if (codec.name === 'disco-folder') {
+            const folder = new DiscoFolder();
+            folder.fromBs58(data);
+            return folder
+          }
         }
         
       }  
@@ -1390,28 +1396,26 @@ class LeofcoinApi extends DiscoBus {
     const change = new Promise((resolve, reject) => {
       input.onchange = async () => {
         const jobs = [];
-        console.log(input.files);
         let size = 0;
         let name;
         for (const file of input.files) {
           size += file.size;
           if (!name) {
             name = file.webkitRelativePath.match(/^(\w*)/g)[0];
-            console.log(name);
           }
           jobs.push(new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = ({target}) => resolve({name: file.name, data: target.result});
-            reader.readAsArrayBuffer(file);
+            reader.onload = ({target}) => resolve({name: file.name, data: Buffer.from(target.result)});
+            reader.readAsText(file);
           }));
         }
         const result = await Promise.all(jobs);
-        console.log(result);
         const _links = [];
+        console.log({result});
         for await (const { name, data } of result) {
           // await api.put()
+          console.log(data);
           const link$1 = new link();
-          console.log(name, data);
           link$1.create({name, data});
           link$1.encode();
           const hash = link$1.discoHash.toBs58();
@@ -1419,9 +1423,7 @@ class LeofcoinApi extends DiscoBus {
           _links.push({name, hash});
         }
         const discoFolder = new DiscoFolder();
-        console.log(discoFolder);
         discoFolder.create({name, links: _links});
-        console.log(discoFolder);
         discoFolder.encode();
         const folderHash = discoFolder.discoHash.toBs58();
         await this.put(folderHash, discoFolder.toBs58());

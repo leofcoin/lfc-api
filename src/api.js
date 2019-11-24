@@ -61,10 +61,8 @@ export default class LeofcoinApi extends DiscoBus {
             node._encoded = message.decoded.data
             node.decode()
             console.log(await globalThis.blocksStore.has(node.decoded.data.hash.toString()));
-            console.log(node.decoded);
             const data = node.decoded.data
             console.log(node.decoded.data.hash);
-              console.log(data.value)
               console.log(data.hash.toString());
             if (data.value) {
               console.log(data.value);
@@ -75,7 +73,6 @@ export default class LeofcoinApi extends DiscoBus {
               
               const has = await globalThis.blocksStore.has(node.decoded.data.hash.toString())
               console.log({has});
-              console.log(node.encoded);
               node._decoded.data.value = has
               node.encode()
               return node.encoded
@@ -324,14 +321,16 @@ export default class LeofcoinApi extends DiscoBus {
           }
           jobs.push(new Promise((resolve, reject) => {
             const reader = new FileReader()
-            reader.onload = ({target}) => resolve({name: file.name, data: target.result});
-            reader.readAsArrayBuffer(file)
+            reader.onload = ({target}) => resolve({name: file.name, data: Buffer.from(target.result)});
+            reader.readAsText(file)
           }))
         }
         const result = await Promise.all(jobs)
         const _links = []
+        console.log({result});
         for await (const { name, data } of result) {
           // await api.put()
+          console.log(data);
           const link = new DiscoLink()
           link.create({name, data})
           link.encode()

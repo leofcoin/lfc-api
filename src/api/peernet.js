@@ -130,17 +130,20 @@ export default class Peernet extends DiscoBus {
             let result;
             try {
               console.log({peerID});
+              if (peerID !== this.discoRoom.peerId) {
+                let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs })
+                message.method = 'has'
+                console.log(message.discoHash.name);
+                const wallet = new MultiWallet('leofcoin:olivia')   
+                wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
+                const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
+                message.encode(signature)
+                message = await peer.request(message)
+                console.log({message});
+                console.log('m result');  
+              }
               
-              let message = new DiscoMessage({ from: this.discoRoom.peerId, to: peerID, data }, {name: node.name, codecs: node.codecs })
-              message.method = 'has'
-              console.log(message.discoHash.name);
-              const wallet = new MultiWallet('leofcoin:olivia')   
-              wallet.fromPrivateKey(Buffer.from(this.discoRoom.config.identity.privateKey, 'hex'), null, 'leofcoin:olivia')
-              const signature = wallet.sign(message.discoHash.digest.slice(0, 32))
-              message.encode(signature)
-              message = await peer.request(message)
-              console.log({message});
-              console.log('m result');
+              
             } catch (error) {
               console.log({error});
             }

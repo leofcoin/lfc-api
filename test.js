@@ -29,8 +29,9 @@ console.log(c);
   await mm.rm('hello')
   mm.subscribe('peer:connected', async () => {
     try {
-      const hello = await mm.get('hello')  
-      const web = await mm.get('2jkuodZxHAgjZY5C8siiBQvKRPr1NQbLjsMZvkfmPQ7N2tymXr')
+//      const hello = await mm.get('hello')  
+      const web = await mm.get('2oHG4YtsxnjagRPqThSRCmLAs4jo6RVC922qtFLBPNYFUiYpmu')
+console.log(web)
     } catch (e) {
       console.error(e); 
     }
