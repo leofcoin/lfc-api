@@ -252,7 +252,7 @@ export default class LeofcoinApi extends DiscoBus {
       if (codec.name === 'disco-folder') {
         const folder = new DiscoFolder()
         folder.fromBs58(data)
-        return folder
+        return folder.encoded
       }
     } catch (e) {
       if (!data) {
@@ -265,7 +265,7 @@ export default class LeofcoinApi extends DiscoBus {
         if (codec.name === 'disco-folder') {
           const folder = new DiscoFolder()
           folder.fromBs58(data)
-          return folder
+          return folder.encoded
         }
         if (data) return data;
         // blocksStore.put(hash, data)
@@ -277,7 +277,7 @@ export default class LeofcoinApi extends DiscoBus {
           if (codec.name === 'disco-folder') {
             const folder = new DiscoFolder()
             folder.fromBs58(data)
-            return folder
+            return folder.encoded
           }
         }
         

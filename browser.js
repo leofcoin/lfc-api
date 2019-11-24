@@ -426,7 +426,7 @@ var versions = {
 }
 };
 
-var version = "1.0.40-alpha.3";
+var version = "1.0.40-alpha.4";
 
 var upgrade = async config => {
   const start = Object.keys(versions).indexOf(config.version);
@@ -689,7 +689,13 @@ class Peernet extends DiscoBus {
       if (message.discoHash.name) {
         if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) {          
           try {
-            const peer = this.peerMap.get(message.decoded.from);
+            let peer = this.peerMap.get(message.decoded.from);
+            if (this.peerMap.has(message.decoded.from)) {
+              peer = this.peerMap.get(message.decoded.from);
+            } else {
+              peer = this.availablePeers.get(message.decoded.from);
+              peer = this.discoRoom.dial(peer);
+            }
             const data = await this.protoCall[message.discoHash.name][message.method](message);
             if (data !== undefined) {
               message._decoded.data = data;
@@ -1339,7 +1345,7 @@ class LeofcoinApi extends DiscoBus {
       if (codec.name === 'disco-folder') {
         const folder = new DiscoFolder();
         folder.fromBs58(data);
-        return folder
+        return folder.encoded
       }
     } catch (e) {
       if (!data) {
@@ -1352,7 +1358,7 @@ class LeofcoinApi extends DiscoBus {
         if (codec.name === 'disco-folder') {
           const folder = new DiscoFolder();
           folder.fromBs58(data);
-          return folder
+          return folder.encoded
         }
         if (data) return data;
         // blocksStore.put(hash, data)
@@ -1364,7 +1370,7 @@ class LeofcoinApi extends DiscoBus {
           if (codec.name === 'disco-folder') {
             const folder = new DiscoFolder();
             folder.fromBs58(data);
-            return folder
+            return folder.encoded
           }
         }
         
@@ -33871,17 +33877,16 @@ var Peer = ({peerInfo, signal, timeout = 1000, requestTimeOut = 5000}) => {
     request: (message) => new Promise((resolve, reject) => {
       let resolved;
       const messageInterface = message;
-      let id = message.id ? message.id : message.discoHash.toBs32();
-      
-      if (message.signature) message.encode(message.signature)
+      const id = message.id || message.discoHash.toBs32();      
+      if (message.signature) message.encode(message.signature);
       
       const once = message => {
         messageInterface._encoded = message;
         messageInterface.decode();
         if (messageInterface.id === id) {
           resolved = true;
-          resolve(message);
           peer.removeListener('data', once);
+          resolve(message);
         }
       };
       setTimeout( () => {
@@ -53581,7 +53586,7 @@ class Peer extends stream.Duplex {
       this.addTransceiver(data.transceiverRequest.kind, data.transceiverRequest.init)
     }
     if (data.candidate) {
-      if (this._pc.localDescription && this._pc.localDescription.type && this._pc.remoteDescription && this._pc.remoteDescription.type) {
+      if (this._pc.remoteDescription && this._pc.remoteDescription.type) {
         this._addIceCandidate(data.candidate)
       } else {
         this._pendingCandidates.push(data.candidate)
@@ -54078,7 +54083,7 @@ class Peer extends stream.Duplex {
     }
 
     // Promise-based getStats() (standard)
-    if (this._pc.getStats.length === 0) {
+    if (this._pc.getStats.length === 0 || this._isReactNativeWebrtc) {
       this._pc.getStats()
         .then(res => {
           var reports = []
@@ -54087,16 +54092,6 @@ class Peer extends stream.Duplex {
           })
           cb(null, reports)
         }, err => cb(err))
-
-    // Two-parameter callback-based getStats() (deprecated, former standard)
-    } else if (this._isReactNativeWebrtc) {
-      this._pc.getStats(null, res => {
-        var reports = []
-        res.forEach(report => {
-          reports.push(flattenValues(report))
-        })
-        cb(null, reports)
-      }, err => cb(err))
 
     // Single-parameter callback-based getStats() (non-standard)
     } else if (this._pc.getStats.length > 0) {

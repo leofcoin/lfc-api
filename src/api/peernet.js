@@ -49,7 +49,13 @@ export default class Peernet extends DiscoBus {
       if (message.discoHash.name) {
         if (this.protoCall[message.discoHash.name] && this.protoCall[message.discoHash.name][message.method]) {          
           try {
-            const peer = this.peerMap.get(message.decoded.from)
+            let peer = this.peerMap.get(message.decoded.from)
+            if (this.peerMap.has(message.decoded.from)) {
+              peer = this.peerMap.get(message.decoded.from)
+            } else {
+              peer = this.availablePeers.get(message.decoded.from)
+              peer = this.discoRoom.dial(peer)
+            }
             const data = await this.protoCall[message.discoHash.name][message.method](message)
             if (data !== undefined) {
               message._decoded.data = data
