@@ -40,6 +40,16 @@ export default [{
         const imported = await import('./../lib/qrcode.js');
         window.QRCode = imported.default;
       }`,
+      IPFS_IMPORT: `new Promise((resolve, reject) => {
+        if (!window.Ipfs) {
+          const script = document.createElement('script')
+          script.onload = () => resolve();
+          script.src = 'https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js'
+          document.body.appendChild(script)
+        } else {
+          resolve()
+        }        
+      })`,
       DISCO_ROOM_IMPORT: `
         const imported = await import('./lib/disco-room.js');
         const DiscoRoom = imported.default;`
@@ -87,12 +97,16 @@ export default [{
   output: {
     file: 'commonjs.js',
     format: 'cjs',
-    intro: 'let QRCode;'
+    intro: 'let QRCode;\nlet Ipfs;'
   },
   plugins: [
     json(),
     modify({
       QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`,
+      IPFS_IMPORT: `new Promise((resolve, reject) => {
+        if (!Ipfs) Ipfs = require('ipfs');
+        resolve()
+      })`,
       DISCO_ROOM_IMPORT: `const DiscoRoom = require('disco-room')`
     }),
     cjs({

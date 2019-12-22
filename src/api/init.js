@@ -1,13 +1,15 @@
 import Storage from './../../node_modules/lfc-storage/src/level.js';
 import upgrade from './upgrade';
-import { merge, envConfig } from './../utils';
+import { merge } from './../utils';
+import { DEFAULT_CONFIG } from './../constants';
 
 export default async _config => {
-  globalThis.configStore = new Storage('config')
+  globalThis.configStore = new Storage('lfc-config')
+  globalThis.accountStore = new Storage('lfc-account')
   
   let config = await configStore.get()
   if (!config || Object.keys(config).length === 0) {
-    config = merge(envConfig(), config)
+    config = merge(DEFAULT_CONFIG, config)
     config = merge(config, _config)
     
     // private node configuration & identity
@@ -15,13 +17,7 @@ export default async _config => {
     // by the public accessible account details
   }
   
-  config = await upgrade(config)
-  
-  for (let path of Object.keys(config.storage)) {
-    path = config.storage[path];
-    const store = `${path}Store`;
-    if (!globalThis[store]) globalThis[store] = new Storage(path)
-  }
+  // config = await upgrade(config)
   
   return config;
 }

@@ -28,24 +28,23 @@ const generateProfile = async () => {
     mnemonic,
     publicKey: external.publicKey,
     privateKey: external.privateKey,
-    peerId: external.id
+    walletId: external.id
   }
 }
 
-const account = { 
-  generateQR,
-  generateProfileQR,
-  generateProfile,
+const account = {
   import: async (identity, password) => {
     if (!identity) throw new Error('expected identity to be defined')
     if (identity.mnemonic) {
       const wallet = new MultiWallet('leofcoin:olivia');
       wallet.recover(identity.mnemonic)
+      const account = wallet.account(0)
+      const external = account.external(0)
       identity = {
         mnemonic: identity.mnemonic,
-        publicKey: wallet.account(0).node.publicKey,
-        privateKey: wallet.account(0).node.privateKey,
-        peerId: wallet.id
+        publicKey: external.publicKey,
+        privateKey: external.privateKey,
+        walletId: external.id
       }
     }
     let config = await configStore.get()
@@ -65,4 +64,9 @@ const account = {
   }
 }
 
-export default account
+export { 
+  generateQR,
+  generateProfileQR,
+  generateProfile,
+  account
+}

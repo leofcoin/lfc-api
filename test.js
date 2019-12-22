@@ -13,29 +13,37 @@ const {codes, privateKey, mnemonic } = {
 test('wetalk-api', async tape => {
   // tape.plan(2);
   const mm = await new m()
-  console.log(m);   
-const c = await mm.config.get()
-console.log(c);
-  const code = await mm.account.generateQR('hello');
-  // tape.equal(codes[0], code)
-  const code1 = await mm.account.generateProfileQR({peerID: 'none', mnemonic: 'none'})
-  // tape.equal(codes[1], code1)
-  
-  // const generated = await mm.account.generateProfile()
-  // console.log(generated);
-  
-  // const qr = await mm.account.export('password')
-  // console.log(qr);
-  await mm.rm('hello')
-  mm.subscribe('peer:connected', async () => {
-    try {
-      // const hello = await mm.get('hello')   
-      const web = await mm.get('2kdzsN4s7WYxQhD9q5EA7mtQS1yGjBQHLRTH23XvzHQcCxeJiz')
-      console.log({web});
-    } catch (e) {
-      console.error(e); 
+  const result = await mm.ipfs.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
+  console.log(result);
+  for (const {hash, path} of result) {
+    await mm.ipfs.pin.add(hash)
+    if (path === 'www') {
+      const published = await mm.ipfs.name.publish(hash)
+      console.log({published});
     }
-  })
+  }
+// const c = await mm.config.get()
+// console.log(c);
+//   const code = await mm.account.generateQR('hello');
+//   // tape.equal(codes[0], code)
+//   const code1 = await mm.account.generateProfileQR({peerID: 'none', mnemonic: 'none'})
+//   // tape.equal(codes[1], code1)
+// 
+//   // const generated = await mm.account.generateProfile()
+//   // console.log(generated);
+// 
+//   // const qr = await mm.account.export('password')
+//   // console.log(qr);
+//   await mm.rm('hello')
+  // mm.subscribe('peer:connected', async () => {
+  //   try {
+  //     // const hello = await mm.get('hello')   
+  //     const web = await mm.get('2kdzsN4s7WYxQhD9q5EA7mtQS1yGjBQHLRTH23XvzHQcCxeJiz')
+  //     console.log({web});
+  //   } catch (e) {
+  //     console.error(e); 
+  //   }
+  // })
   
 })
 // (async () => {
