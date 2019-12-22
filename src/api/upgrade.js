@@ -1,7 +1,7 @@
 import versions from './../versions.json';
 import { version } from './../../package.json';
 import Storage from './../../node_modules/lfc-storage/src/level.js';
-import { merge, envConfig } from './../utils';
+import { merge } from './../utils';
 
 export default async config => {
   let start = Object.keys(versions).indexOf(config.version.toString());
@@ -17,13 +17,9 @@ export default async config => {
     const _config = versions[key]
     console.log(_config);
     config = merge(config, _config)
-    if (key === '1.0.1') {
-      globalThis.accountStore = new Storage(config.storage.account)
-      await accountStore.put({ public: { peerId: config.identity.peerId }})
-    }
+    
     // if (key === '1.0.16' || key === '1.0.17' || key === '1.0.23' || key === '1.0.26') {
-    const defaultConfig = envConfig();
-    config.discovery = defaultConfig.discovery;
+    
     // }
     config.version = key;
   }

@@ -3,9 +3,55 @@
   <head>
     <meta charset="utf-8">
     <title></title>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/multi-wallet@1.2.6/browser.js"></script> -->
     <script src="./../browser.js"></script>
   </head>
   <body>
-    
+    <!-- <script type="module">
+      (async () => {
+        const wallet = new MultiWallet('leofcoin:olivia');
+        const mnemonic = wallet.generate();
+        const account = wallet.account(0)
+        const external = account.external(0)
+        
+        const node = await Ipfs.create({
+          pass: mnemonic,
+          repo: '/var/ipfs/data',
+          EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
+        })
+        window.node = node
+        
+        // await node.swarm.connect('/ip4/127.0.0.1/tcp/4003/ws/ipfs/QmTCCuqkio3135QPGepxPdwmtWHS8Kjw1kzW8aGfrqipnc')
+        node.pubsub.publish('data', 'hi')
+        const keys = await node.key.list();
+        let key
+        for (const _key of keys) {
+          if (_key.name === 'lfc-blocks') key = _key
+        }
+        if (!key) key = await node.key.gen('lfc-blocks', {
+          type: 'rsa',
+          size: 2048
+        })
+        
+        console.log(key);
+        
+        
+        const strap = [
+          '/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/p2p-circuit/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/p2p-circuit/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'
+        ]
+        
+        for (const addr of strap) {
+          await node.swarm.connect(addr)
+        }
+        
+        
+        
+        
+      })();
+    </script> -->
   </body>
 </html>
