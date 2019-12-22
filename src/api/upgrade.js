@@ -1,6 +1,6 @@
 import versions from './../versions.json';
-import { version } from './../../package.json';
 import { merge } from './../utils';
+const version = '2.0.4';
 
 export default async config => {
   let start = Object.keys(versions).indexOf(config.version.toString());
