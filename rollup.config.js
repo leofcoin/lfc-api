@@ -10,8 +10,8 @@ import builtins from 'rollup-plugin-node-builtins';
 try {
   execSync('rm browser.js.tmp-browserify-*')
 } catch (e) {
-  
 }
+execSync('cp node_modules/lfc-storage/src/level.js src/lib/level.js')
 execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
 // execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
 
@@ -35,6 +35,13 @@ export default [{
   plugins: [
     json(),
     modify({
+      STORAGE_IMPORT: `new Promise(async (resolve, reject) => {
+        if (!window.LeofcoinStorage) {
+          const imported = await import('./../lib/level.js');
+          window.LeofcoinStorage = imported.default;
+          resolve()
+        }
+      })`,
       QRCODE_IMPORT: `if (!window.QRCode) {
         const imported = await import('./../lib/qrcode.js');
         window.QRCode = imported.default;
@@ -61,7 +68,7 @@ export default [{
     resolve({
         preferBuiltins: false,
           // include: ['node_modules/**'],
-        mainFields: ['module', 'main', 'browser'],
+        mainFields: ['browser', 'module', 'main'],
         only: ['node_modules/protons/**']
       }),
     cjs({include: ['node_modules/**'],
@@ -79,6 +86,7 @@ export default [{
       patterns: [
         {
           transform: (code, id) => { // replace by function
+            console.log(code);
             id = id.replace(`${process.cwd()}\\`, '').replace(/\\/g, '/');
             if (exclude.indexOf(id) !== -1) return '{}';
             return code;
@@ -96,11 +104,15 @@ export default [{
   output: {
     file: 'commonjs.js',
     format: 'cjs',
-    intro: 'let QRCode;\nlet Ipfs;'
+    intro: 'let QRCode;\nlet Ipfs;\nlet LeofcoinStorage;'
   },
   plugins: [
     json(),
     modify({
+    STORAGE_IMPORT: `new Promise((resolve, reject) => {
+      if (!LeofcoinStorage) LeofcoinStorage = require('./node_modules/lfc-storage/commonjs.js');
+      resolve()
+    });`,
       QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`,
       IPFS_IMPORT: `new Promise((resolve, reject) => {
         if (!Ipfs) Ipfs = require('ipfs');
