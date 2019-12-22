@@ -1,6 +1,5 @@
 import versions from './../versions.json';
 import { version } from './../../package.json';
-import Storage from './../../node_modules/lfc-storage/src/level.js';
 import { merge } from './../utils';
 
 export default async config => {
