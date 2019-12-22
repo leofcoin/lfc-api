@@ -50,13 +50,6 @@ const generateProfile = async () => {
   }
 };
 
-// const level = require('level');
-const LevelStore = require('datastore-level');
-const { homedir } = require('os');
-const { join } = require('path');
-const Key = require('interface-datastore').Key;
-const {readdirSync, mkdirSync} = require('fs');
-
 var init = async _config => {
   await new Promise((resolve, reject) => {
       if (!LeofcoinStorage) LeofcoinStorage = require('./node_modules/lfc-storage/commonjs.js');

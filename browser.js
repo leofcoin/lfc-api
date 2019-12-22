@@ -48,13 +48,6 @@ const generateProfile = async () => {
   }
 };
 
-// const level = require('level');
-const LevelStore = require('datastore-level');
-const { homedir } = require('os');
-const { join } = require('path');
-const Key = require('interface-datastore').Key;
-const {readdirSync, mkdirSync} = require('fs');
-
 var init = async _config => {
   await new Promise(async (resolve, reject) => {
         if (!window.LeofcoinStorage) {
@@ -149,23 +142,23 @@ class LeofcoinApi extends DiscoBus {
 }
 
 // const level = require('level');
-const LevelStore$1 = require('datastore-level');
-const { homedir: homedir$1 } = require('os');
-const { join: join$1 } = require('path');
-const Key$1 = require('interface-datastore').Key;
-const {readdirSync: readdirSync$1, mkdirSync: mkdirSync$1} = require('fs');
+const LevelStore = require('datastore-level');
+const { homedir } = require('os');
+const { join } = require('path');
+const Key = require('interface-datastore').Key;
+const {readdirSync, mkdirSync} = require('fs');
 
 class LeofcoinStorage$1 {
 
   constructor(path, root = '.leofcoin') {
-    this.root = join$1(homedir$1(), root);
-    if (readdirSync$1) try {
-      readdirSync$1(this.root);
+    this.root = join(homedir(), root);
+    if (readdirSync) try {
+      readdirSync(this.root);
     } catch (e) {
-      if (e.code === 'ENOENT') mkdirSync$1(this.root);
+      if (e.code === 'ENOENT') mkdirSync(this.root);
       else throw e
     }
-    this.db = new LevelStore$1(join$1(this.root, path));
+    this.db = new LevelStore(join(this.root, path));
     // this.db = level(path, { prefix: 'lfc-'})
   }
   
@@ -194,7 +187,7 @@ class LeofcoinStorage$1 {
     if (typeof key === 'object') return this.many('put', key);
     value = this.toBuffer(value);
         
-    return this.db.put(new Key$1(key), value);    
+    return this.db.put(new Key(key), value);    
   }
   
   async query() {
@@ -212,7 +205,7 @@ class LeofcoinStorage$1 {
     if (!key) return this.query()
     if (typeof key === 'object') return this.many('get', key);
     
-    let data = await this.db.get(new Key$1(key));
+    let data = await this.db.get(new Key(key));
     if (!data) return undefined
         
     return this.possibleJSON(data)
@@ -222,7 +215,7 @@ class LeofcoinStorage$1 {
     if (typeof key === 'object') return this.many('has', key);
     
     try {
-      await this.db.get(new Key$1(key));
+      await this.db.get(new Key(key));
       return true;
     } catch (e) {
       return false
@@ -230,7 +223,7 @@ class LeofcoinStorage$1 {
   }
   
   async delete(key) {
-    return this.db.delete(new Key$1(key))
+    return this.db.delete(new Key(key))
   }
   
   possibleJSON(data) {
