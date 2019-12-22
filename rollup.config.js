@@ -12,7 +12,6 @@ try {
 } catch (e) {
   
 }
-execSync('cp node_modules/disco-room/disco-room.js src/lib/disco-room.js')
 execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
 // execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
 
