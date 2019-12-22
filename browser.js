@@ -55,99 +55,15 @@ const { join } = require('path');
 const Key = require('interface-datastore').Key;
 const {readdirSync, mkdirSync} = require('fs');
 
-class LeofcoinStorage {
-
-  constructor(path, root = '.leofcoin') {
-    this.root = join(homedir(), root);
-    if (readdirSync) try {
-      readdirSync(this.root);
-    } catch (e) {
-      if (e.code === 'ENOENT') mkdirSync(this.root);
-      else throw e
-    }
-    this.db = new LevelStore(join(this.root, path));
-    // this.db = level(path, { prefix: 'lfc-'})
-  }
-  
-  toBuffer(value) {
-    if (Buffer.isBuffer(value)) return value;
-    if (typeof value === 'object' ||
-        typeof value === 'boolean' ||
-        !isNaN(value)) value = JSON.stringify(value);
-        
-    return Buffer.from(value)
-  }
-  
-  async many(type, _value) {    
-    const jobs = [];
-    
-    for (const key of Object.keys(_value)) {
-      const value = this.toBuffer(_value[key]);
-      
-      jobs.push(this[type](key, value));
-    }
-    
-    return Promise.all(jobs)
-  }
-  
-  async put(key, value) {
-    if (typeof key === 'object') return this.many('put', key);
-    value = this.toBuffer(value);
-        
-    return this.db.put(new Key(key), value);    
-  }
-  
-  async query() {
-    const object = {};
-    
-    for await (let query of this.db.query({})) {
-      const key = query.key.baseNamespace();
-      object[key] = this.possibleJSON(query.value);
-    }
-    
-    return object
-  }
-  
-  async get(key) {
-    if (!key) return this.query()
-    if (typeof key === 'object') return this.many('get', key);
-    
-    let data = await this.db.get(new Key(key));
-    if (!data) return undefined
-        
-    return this.possibleJSON(data)
-  }
-  
-  async has(key) {
-    if (typeof key === 'object') return this.many('has', key);
-    
-    try {
-      await this.db.get(new Key(key));
-      return true;
-    } catch (e) {
-      return false
-    }
-  }
-  
-  async delete(key) {
-    return this.db.delete(new Key(key))
-  }
-  
-  possibleJSON(data) {
-    let string = data.toString();
-    if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' || 
-        string.charAt(0) === '[' && string.charAt(string.length - 1) === ']' ||
-        string === 'true' ||
-        string === 'false' ||
-        !isNaN(string)) 
-        return JSON.parse(string);
-        
-    return data;
-  }
-
-}
-
 var init = async _config => {
+  await new Promise(async (resolve, reject) => {
+        if (!window.LeofcoinStorage) {
+          const imported = await Promise.resolve().then(function () { return level; });
+          window.LeofcoinStorage = imported.default;
+          resolve();
+        }
+      });
+  
   globalThis.configStore = new LeofcoinStorage('lfc-config');
   globalThis.accountStore = new LeofcoinStorage('lfc-account');
   
@@ -212,25 +128,129 @@ class LeofcoinApi extends DiscoBus {
     const { id, addresses } = await this.ipfs.id();
     
     this.addresses = addresses;
-    this.peerId = id;    
-    
-    const strap = [
-      '/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-      '/p2p-circuit/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-      '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-      '/p2p-circuit/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'
-    ];
-    
-    for (const addr of strap) {
-      await this.ipfs.swarm.connect(addr);
-    }
-    
+    this.peerId = id;
+    // 
+    // const strap = [
+    //   '/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+    //   '/p2p-circuit/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+    //   '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+    //   '/p2p-circuit/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'
+    // ]
+    // 
+    // for (const addr of strap) {
+    //   await this.ipfs.swarm.connect(addr)
+    // }
+    // 
     return this
     
   }
   
   
 }
+
+// const level = require('level');
+const LevelStore$1 = require('datastore-level');
+const { homedir: homedir$1 } = require('os');
+const { join: join$1 } = require('path');
+const Key$1 = require('interface-datastore').Key;
+const {readdirSync: readdirSync$1, mkdirSync: mkdirSync$1} = require('fs');
+
+class LeofcoinStorage$1 {
+
+  constructor(path, root = '.leofcoin') {
+    this.root = join$1(homedir$1(), root);
+    if (readdirSync$1) try {
+      readdirSync$1(this.root);
+    } catch (e) {
+      if (e.code === 'ENOENT') mkdirSync$1(this.root);
+      else throw e
+    }
+    this.db = new LevelStore$1(join$1(this.root, path));
+    // this.db = level(path, { prefix: 'lfc-'})
+  }
+  
+  toBuffer(value) {
+    if (Buffer.isBuffer(value)) return value;
+    if (typeof value === 'object' ||
+        typeof value === 'boolean' ||
+        !isNaN(value)) value = JSON.stringify(value);
+        
+    return Buffer.from(value)
+  }
+  
+  async many(type, _value) {    
+    const jobs = [];
+    
+    for (const key of Object.keys(_value)) {
+      const value = this.toBuffer(_value[key]);
+      
+      jobs.push(this[type](key, value));
+    }
+    
+    return Promise.all(jobs)
+  }
+  
+  async put(key, value) {
+    if (typeof key === 'object') return this.many('put', key);
+    value = this.toBuffer(value);
+        
+    return this.db.put(new Key$1(key), value);    
+  }
+  
+  async query() {
+    const object = {};
+    
+    for await (let query of this.db.query({})) {
+      const key = query.key.baseNamespace();
+      object[key] = this.possibleJSON(query.value);
+    }
+    
+    return object
+  }
+  
+  async get(key) {
+    if (!key) return this.query()
+    if (typeof key === 'object') return this.many('get', key);
+    
+    let data = await this.db.get(new Key$1(key));
+    if (!data) return undefined
+        
+    return this.possibleJSON(data)
+  }
+  
+  async has(key) {
+    if (typeof key === 'object') return this.many('has', key);
+    
+    try {
+      await this.db.get(new Key$1(key));
+      return true;
+    } catch (e) {
+      return false
+    }
+  }
+  
+  async delete(key) {
+    return this.db.delete(new Key$1(key))
+  }
+  
+  possibleJSON(data) {
+    let string = data.toString();
+    if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' || 
+        string.charAt(0) === '[' && string.charAt(string.length - 1) === ']' ||
+        string === 'true' ||
+        string === 'false' ||
+        !isNaN(string)) 
+        return JSON.parse(string);
+        
+    return data;
+  }
+
+}
+
+var level = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  'default': LeofcoinStorage$1
+});
 
 module.exports = LeofcoinApi;
 
