@@ -3,8 +3,8 @@ import init from './api/init';
 import DiscoBus from '@leofcoin/disco-bus';
 import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
-import ipldLfc from './../node_modules/ipld-lfc/index';
-import ipldLfcTx from './../node_modules/ipld-lfc-tx/index';
+import ipldLfc from 'ipld-lfc';
+import ipldLfcTx from 'ipld-lfc-tx';
 
 // import IPFS from 'ipfs';
 import MultiWallet from 'multi-wallet';
@@ -77,7 +77,6 @@ export default class LeofcoinApi extends DiscoBus {
     })
     
     const { id, addresses } = await this.ipfs.id()
-    
     this.addresses = addresses;
     this.peerId = id;
     
