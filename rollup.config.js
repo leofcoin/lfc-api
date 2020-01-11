@@ -110,7 +110,7 @@ export default [{
     json(),
     modify({
     STORAGE_IMPORT: `new Promise((resolve, reject) => {
-      if (!LeofcoinStorage) LeofcoinStorage = require('./node_modules/lfc-storage/commonjs.js');
+      if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
       resolve()
     });`,
       QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`,

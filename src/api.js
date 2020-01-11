@@ -2,6 +2,9 @@ import { generateProfile } from './api/account'
 import init from './api/init';
 import DiscoBus from '@leofcoin/disco-bus';
 import { expected, debug } from './utils.js';
+import multicodec from 'multicodec';
+import ipldLfc from './../node_modules/ipld-lfc/index';
+import ipldLfcTx from './../node_modules/ipld-lfc-tx/index';
 
 // import IPFS from 'ipfs';
 import MultiWallet from 'multi-wallet';
@@ -37,6 +40,39 @@ export default class LeofcoinApi extends DiscoBus {
     this.ipfs = await Ipfs.create({
       pass: config.identity.privateKey,
       repo: configStore.root,
+      ipld: {
+        async loadFormat (codec) {
+          if (codec === multicodec.LEOFCOIN_BLOCK) {
+            return import('ipld-lfc')
+          } else if (codec === multicodec.LEOFCOIN_TX) {
+            return import('ipld-lfc-tx')
+          } else {
+            throw new Error('unable to load format ' + multicodec.print[codec])
+          }
+        }
+      },
+      libp2p: {
+        config: {
+          dht: {
+            enabled: true
+          }
+        }
+      },
+      config: {
+        Addresses: {
+          Swarm: [
+            '/ip4/45.137.149.26/tcp/4430/ws/p2p-websocket-star'
+          ]
+        },
+        Bootstrap: [          
+          '/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/p2p-circuit/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/p2p-circuit/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
+          '/ip4/45.137.149.26/tcp/4001/ipfs/QmP4tp5VoUNmGzApvFvQPkMXHLzafr7ULmhiswpeJ2fd4Z', 
+          '/p2p-circuit/ip4/45.137.149.26/tcp/4001/ipfs/QmP4tp5VoUNmGzApvFvQPkMXHLzafr7ULmhiswpeJ2fd4Z'          
+        ]
+      },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     })
     
@@ -44,18 +80,7 @@ export default class LeofcoinApi extends DiscoBus {
     
     this.addresses = addresses;
     this.peerId = id;
-    // 
-    // const strap = [
-    //   '/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-    //   '/p2p-circuit/ip4/45.137.149.26/tcp/4003/ws/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-    //   '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-    //   '/p2p-circuit/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'
-    // ]
-    // 
-    // for (const addr of strap) {
-    //   await this.ipfs.swarm.connect(addr)
-    // }
-    // 
+    
     return this
     
   }
