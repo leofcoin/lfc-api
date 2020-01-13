@@ -164,12 +164,12 @@ class LeofcoinApi extends DiscoBus {
         config: {
           Addresses: {
             Swarm: [
-              `/ip4/45.137.149.26/tcp/4430/${https ? 'wss' : 'ws'}/p2p-websocket-star`
+              `/ip4/45.137.149.26/tcp/${https ? 4444 : 4430}/${https ? 'wss' : 'ws'}/p2p-websocket-star`,
             ]
           },
           Bootstrap: [
-            `/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4`,
-            `/p2p-circuit/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4`
+            `/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
+            `/p2p-circuit/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`
           ]
         },
         EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
