@@ -15,9 +15,13 @@ const {codes, privateKey, mnemonic } = {
 (async () => {
 try {
   const mm = await new m()
-  console.log(mm);
   const result = await mm.ipfs.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
-  console.log(result);
+  
+  
+  const pinned = await mm.ipfs.pin.ls()
+  for (const pin of pinned) {
+    console.log(pin);
+  }
   const keys = await mm.ipfs.key.list();
     let key
     for (const _key of keys) {
@@ -36,7 +40,7 @@ try {
   for (const {hash, path} of result) {
     await mm.ipfs.pin.add(hash)
     if (path === 'www') {
-      const published = await mm.ipfs.name.publish(hash, {key: 'thealtereddimension.be'})
+      const published = await mm.ipfs.name.publish(hash, {key: 'thealtereddimension.com'})
       console.log({published});
     }
   }
