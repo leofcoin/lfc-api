@@ -39200,7 +39200,6 @@ message LFCInput {
 message LFCTransaction {
   required string id = 1;
   required uint64 time = 2;
-  required string hash = 3;
   optional string reward = 4;
   repeated LFCInput inputs = 5;
   repeated LFCOutput outputs = 6;
@@ -39285,7 +39284,6 @@ const traverse = function * (node, path) {
 
 const tree = function * (buffer) {
   const node = deserialize(buffer);
-console.log(node);
   yield * traverse(node);
 };
 
@@ -39293,8 +39291,9 @@ var resolver = { resolve, traverse, tree };
 
 var LFCTx = classIs(class LFCTx {
   get _keys() {
-    return ['id', 'time', 'hash', 'reward', 'inputs', 'outputs']
+    return ['id', 'time', 'reward', 'inputs', 'outputs']
   }
+  
   constructor(tx) {
     if (Buffer.isBuffer(tx)) {
       this._defineTx(deserialize(tx));
