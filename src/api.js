@@ -9,6 +9,11 @@ import ipldLfcTx from 'ipld-lfc-tx';
 // import IPFS from 'ipfs';
 import MultiWallet from 'multi-wallet';
 
+const https = (() => {
+  if (!globalThis.location) return false;
+  return Boolean(globalThis.location.protocol === 'https')
+})();
+
 export default class LeofcoinApi extends DiscoBus {
   constructor(options = { config: {}, init: true, start: true }) {
     super()
@@ -37,42 +42,44 @@ export default class LeofcoinApi extends DiscoBus {
     await IPFS_IMPORT
     
     // TODO: encrypt config
-    this.ipfs = await Ipfs.create({
-      pass: config.identity.privateKey,
-      repo: configStore.root,
-      ipld: {
-        async loadFormat (codec) {
-          if (codec === multicodec.LEOFCOIN_BLOCK) {
-            return import('ipld-lfc')
-          } else if (codec === multicodec.LEOFCOIN_TX) {
-            return import('ipld-lfc-tx')
-          } else {
-            throw new Error('unable to load format ' + multicodec.print[codec])
+    try {
+      this.ipfs = await Ipfs.create({
+        pass: config.identity.privateKey,
+        repo: configStore.root,
+        ipld: {
+          async loadFormat (codec) {
+            if (codec === multicodec.LEOFCOIN_BLOCK) {
+              return import('ipld-lfc')
+            } else if (codec === multicodec.LEOFCOIN_TX) {
+              return import('ipld-lfc-tx')
+            } else {
+              throw new Error('unable to load format ' + multicodec.print[codec])
+            }
           }
-        }
-      },
-      libp2p: {
+        },
+        libp2p: {
+          config: {
+            dht: {
+              enabled: true
+            }
+          }
+        },
         config: {
-          dht: {
-            enabled: true
-          }
-        }
-      },
-      config: {
-        Addresses: {
-          Swarm: [
-            '/ip4/45.137.149.26/tcp/4430/ws/p2p-websocket-star'
+          Addresses: {
+            Swarm: [
+              `/ip4/45.137.149.26/tcp/4430/${https ? 'wss' : 'ws'}/p2p-websocket-star`
+            ]
+          },
+          Bootstrap: [
+            `/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4`,
+            `/p2p-circuit/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4`
           ]
         },
-        Bootstrap: [
-          '/ip4/45.137.149.26/tcp/4003/wss/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-          '/p2p-circuit/ip4/45.137.149.26/tcp/4003/wss/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-          '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4',
-          '/p2p-circuit/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'    
-        ]
-      },
-      EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
-    })
+        EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
+      })
+    } catch (e) {
+      console.error(e);
+    }
     
     const { id, addresses } = await this.ipfs.id()
     this.addresses = addresses;
