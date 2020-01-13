@@ -11,7 +11,7 @@ import MultiWallet from 'multi-wallet';
 
 const https = (() => {
   if (!globalThis.location) return false;
-  return Boolean(globalThis.location.protocol === 'https')
+  return Boolean(globalThis.location.protocol === 'https:')
 })();
 
 export default class LeofcoinApi extends DiscoBus {
