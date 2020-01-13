@@ -99,7 +99,7 @@ var init = async _config => {
 
 const https = (() => {
   if (!globalThis.location) return false;
-  return Boolean(globalThis.location.protocol === 'https')
+  return Boolean(globalThis.location.protocol === 'https:')
 })();
 
 class LeofcoinApi extends DiscoBus {
