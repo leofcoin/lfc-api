@@ -31,7 +31,7 @@
     "@leofcoin/disco-bus": "^1.0.4",
     "ipfs": "^0.40.0",
     "ipld-lfc": "^0.1.4",
-    "ipld-lfc-tx": "^0.2.0",
+    "ipld-lfc-tx": "^0.3.0",
     "lfc-storage": "^1.7.1",
     "multi-wallet": "^1.2.6",
     "node-fetch": "^2.6.0",
