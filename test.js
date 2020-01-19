@@ -22,19 +22,19 @@ try {
   // for (const pin of pinned) {
   //   console.log(pin);
   // }
-  // const keys = await mm.ipfs.key.list();
-  //   let key
-  //   for (const _key of keys) {
-  //     if (_key.name === `thealtereddimension.com`) key = _key
-  //   }
-    // if (!key){ key = await mm.ipfs.key.gen(`thealtereddimension.com`, {
-    //   type: 'rsa',
-    //   size: 2048
-    // });
-    // key = await mm.ipfs.key.gen(`thealtereddimension.be`, {
-    //   type: 'rsa',
-    //   size: 2048
-    // });}
+  const keys = await mm.ipfs.key.list();
+    let key
+    for (const _key of keys) {
+      if (_key.name === `thealtereddimension.com`) key = _key
+    }
+    if (!key){ key = await mm.ipfs.key.gen(`thealtereddimension.com`, {
+      type: 'rsa',
+      size: 2048
+    });
+    key = await mm.ipfs.key.gen(`thealtereddimension.be`, {
+      type: 'rsa',
+      size: 2048
+    });}
     // console.log(key);
     
   for (const {hash, path} of result) {

@@ -34,29 +34,6 @@ var multicodec = _interopDefault(require('multicodec'));
 require('ipld-lfc');
 require('ipld-lfc-tx');
 
-const DEFAULT_CONFIG = {
-  strap: [
-    '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'
-  ],
-  storage: {
-    account: 'lfc-account',
-    config: 'lfc-config',
-  },
-  version: '1.0.40-alpha.5'
-};
-
-const merge = (object, source) => {
-  for (const key of Object.keys(object)) {
-    if (typeof object[key] === 'object' && source[key] && !Array.isArray(source[key])) object[key] = merge(object[key], source[key]);
-    else if(source[key] && typeof object[key] !== 'object'|| Array.isArray(source[key])) object[key] = source[key];
-  }
-  for (const key of Object.keys(source)) {
-    if (typeof source[key] === 'object' && !object[key] && !Array.isArray(source[key])) object[key] = merge(object[key] || {}, source[key]);
-    else if (typeof source[key] !== 'object' && !object[key] || Array.isArray(source[key])) object[key] = source[key];
-  }
-  return object
-};
-
 //
 
 const generateProfile = async () => {
@@ -72,48 +49,31 @@ const generateProfile = async () => {
   }
 };
 
-var init = async _config => {
-  await new Promise((resolve, reject) => {
-      if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
-      resolve();
-    });
-  
-  globalThis.configStore = new LeofcoinStorage('lfc-config');
-  globalThis.accountStore = new LeofcoinStorage('lfc-account');
-  
-  let config = await configStore.get();
-  if (!config || Object.keys(config).length === 0) {
-    config = merge(DEFAULT_CONFIG, config);
-    config = merge(config, _config);
-    
-    // private node configuration & identity
-    await configStore.put(config);
-    // by the public accessible account details
-  }
-  
-  // config = await upgrade(config)
-  
-  return config;
-};
-
 const https = (() => {
   if (!globalThis.location) return false;
   return Boolean(globalThis.location.protocol === 'https:')
 })();
 
 class LeofcoinApi extends DiscoBus {
-  constructor(options = { config: {}, init: true, start: true }) {
+  constructor(options = { init: true, start: true }) {
     super();
-    if (!options.config) options.config = {};
     if (options.init) return this._init(options)
   }
   
-  async _init({config, start}) {
-    config = await init(config);
+  async _init({start}) {
+    await new Promise((resolve, reject) => {
+      if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
+      resolve();
+    });
+    
+    globalThis.accountStore = new LeofcoinStorage('lfc-account');
+    globalThis.configStore = new LeofcoinStorage('lfc-config');
+    const account = await accountStore.get();
+    
+    const config = await configStore.get();
     if (!config.identity) {
-      config.identity = await generateProfile();
-      
       await configStore.put(config);
+      config.identity = await generateProfile();
       await accountStore.put({ public: { walletId: config.identity.walletId }});
     }
     if (start) await this.start(config);
@@ -161,8 +121,8 @@ class LeofcoinApi extends DiscoBus {
             ]
           },
           Bootstrap: [
-            `/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-            `/p2p-circuit/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`
+            `/ip4/45.137.149.26/tcp/4002/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
+            `/p2p-circuit/ip4/45.137.149.26/tcp/4002/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`
           ]
         },
         EXPERIMENTAL: { ipnsPubsub: true, sharding: true }

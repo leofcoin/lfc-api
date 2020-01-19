@@ -1,5 +1,5 @@
 import MultiWallet from 'multi-wallet';
-import { DEFAULT_QR_OPTIONS, DEFAULT_CONFIG } from './../constants.js';
+import { DEFAULT_QR_OPTIONS } from './../constants.js';
 import { expected } from './../utils.js';
 import AES from 'crypto-js/aes.js';
 import ENC from 'crypto-js/enc-utf8.js';
@@ -48,7 +48,7 @@ const account = {
       }
     }
     let config = await configStore.get()
-    config = { ...DEFAULT_CONFIG, ...config, ...{ identity } }
+    config = { ...config, ...{ identity } }
     await configStore.put(config)
   },
   export: async password => {
