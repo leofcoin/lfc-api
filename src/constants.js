@@ -9,15 +9,4 @@ const DEFAULT_QR_OPTIONS = {
   }
 }
 
-const DEFAULT_CONFIG = {
-  strap: [
-    '/ip4/45.137.149.26/tcp/4002/ipfs/QmURywHMRjdyJsSXkAQyYNN5Z2JoTDTPPeRq3HHofUKuJ4'
-  ],
-  storage: {
-    account: 'lfc-account',
-    config: 'lfc-config',
-  },
-  version: '1.0.40-alpha.5'
-}
-
-export { DEFAULT_CONFIG, DEFAULT_QR_OPTIONS }
+export { DEFAULT_QR_OPTIONS }

@@ -1,5 +1,4 @@
 import { generateProfile } from './api/account'
-import init from './api/init';
 import DiscoBus from '@leofcoin/disco-bus';
 import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
@@ -15,18 +14,22 @@ const https = (() => {
 })();
 
 export default class LeofcoinApi extends DiscoBus {
-  constructor(options = { config: {}, init: true, start: true }) {
+  constructor(options = { init: true, start: true }) {
     super()
-    if (!options.config) options.config = {}
     if (options.init) return this._init(options)
   }
   
-  async _init({config, start}) {
-    config = await init(config)
+  async _init({start}) {
+    await STORAGE_IMPORT
+    
+    globalThis.accountStore = new LeofcoinStorage('lfc-account')
+    globalThis.configStore = new LeofcoinStorage('lfc-config')
+    const account = await accountStore.get()
+    
+    const config = await configStore.get()
     if (!config.identity) {
-      config.identity = await generateProfile()
-      
       await configStore.put(config)
+      config.identity = await generateProfile()
       await accountStore.put({ public: { walletId: config.identity.walletId }});
     }
     if (start) await this.start(config)
@@ -71,8 +74,8 @@ export default class LeofcoinApi extends DiscoBus {
             ]
           },
           Bootstrap: [
-            `/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-            `/p2p-circuit/ip4/45.137.149.26/tcp/4003/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`
+            `/ip4/45.137.149.26/tcp/4002/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
+            `/p2p-circuit/ip4/45.137.149.26/tcp/4002/${https ? 'wss' : 'ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`
           ]
         },
         EXPERIMENTAL: { ipnsPubsub: true, sharding: true }

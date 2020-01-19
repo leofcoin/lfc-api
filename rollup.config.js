@@ -37,7 +37,7 @@ export default [{
     modify({
       STORAGE_IMPORT: `new Promise(async (resolve, reject) => {
         if (!window.LeofcoinStorage) {
-          const imported = await import('./../lib/level.js');
+          const imported = await import('./lib/level.js');
           window.LeofcoinStorage = imported.default;
           resolve()
         }
