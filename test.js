@@ -14,7 +14,7 @@ const {codes, privateKey, mnemonic } = {
   // tape.plan(2);
 (async () => {
 try {
-  const mm = await new m()
+  const mm = await new m({start: true, init: true}, 'earth')
   const result = await mm.ipfs.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
   
   console.log({result});
@@ -23,6 +23,7 @@ try {
   //   console.log(pin);
   // }
   const keys = await mm.ipfs.key.list();
+  console.log(keys);
     let key
     for (const _key of keys) {
       if (_key.name === `thealtereddimension.com`) key = _key
@@ -45,7 +46,7 @@ try {
     }
   }
 } catch (e) {
-  
+  console.log(e);
 } finally {
   
 }
