@@ -78,7 +78,7 @@ export default class LeofcoinApi extends DiscoBus {
       config: {
         Addresses: {
           Swarm: [
-            `/ip4/45.137.149.26/tcp/${https ? 4444 : 4430}/${https ? 'wss' : 'ws'}/p2p-websocket-star`
+            `${https ? `/ip4/45.137.149.26/tcp/${https ? 4444 : 4430}/${https ? 'wss' : 'ws'}/p2p-websocket-star` : ''}`
           ]
         }
       },
