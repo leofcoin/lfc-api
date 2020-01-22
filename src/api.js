@@ -17,6 +17,7 @@ const https = (() => {
 export default class LeofcoinApi extends DiscoBus {
   constructor(options = { init: true, start: true }, bootstrap) {
     super()
+    this.peerMap = new Map()
     if (options.init) return this._init(options)
   }
   
@@ -108,15 +109,15 @@ export default class LeofcoinApi extends DiscoBus {
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
         console.log(`peer discovered: ${peerInfo.id.toB58String()}`)
-        peerMap.set(peerInfo.id.toB58String(), false)
+        this.peerMap.set(peerInfo.id.toB58String(), false)
       })
       this.ipfs.libp2p.on('peer:connect', peerInfo => {
         console.log(`peer connected ${peerInfo.id.toB58String()}`)
-        peerMap.set(peerInfo.id.toB58String(), true)
+        this.peerMap.set(peerInfo.id.toB58String(), true)
       })
       this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
       console.log(`peer disconnected ${peerInfo.id.toB58String()}`)
-        peerMap.delete(peerInfo.id.toB58String())
+        this.peerMap.delete(peerInfo.id.toB58String())
       })
     } catch (e) {
       console.error(e);
