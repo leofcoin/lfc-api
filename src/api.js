@@ -49,8 +49,8 @@ export default class LeofcoinApi extends DiscoBus {
     await IPFS_IMPORT
     
     if (bootstrap !== 'earth') config.Bootstrap = [
-      `/dns4/star.leofcoin.org/tcp/${https ? '4004/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-      `/p2p-circuit/star.leofcoin.org/tcp/${https ? '4004/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
+      `/ip4/45.137.149.26/tcp/${https ? '4004/wss' : '4003/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
+      `/p2p-circuit/45.137.149.26/tcp/${https ? '4004/wss' : '4003/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
       '/p2p-circuit/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF'
     ]
     
@@ -78,7 +78,7 @@ export default class LeofcoinApi extends DiscoBus {
       config: {
         Addresses: {
           Swarm: [
-            `/dns4/star.leofcoin.org/tcp/${https ? 4444 : 4430}/${https ? 'wss' : 'ws'}/p2p-websocket-star`,
+            `/ip4/45.137.149.26/tcp/${https ? 4444 : 4430}/${https ? 'wss' : 'ws'}/p2p-websocket-star`
           ]
         }
       },
@@ -97,7 +97,7 @@ export default class LeofcoinApi extends DiscoBus {
       //       protocol: 'lfc-message'
       //     },
       //     peers: [
-      //       `/dns4/star.leofcoin.org/tcp/4002/${https ? '4003/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
+      //       `/dnsaddr/star.leofcoin.org/tcp/4002/${https ? '4003/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
       //       `/p2p-circuit/star.leofcoin.org/tcp/${https ? '4003/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
       //       '/p2p-circuit/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF'
       //     ]
