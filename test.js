@@ -14,7 +14,7 @@ const {codes, privateKey, mnemonic } = {
   // tape.plan(2);
 (async () => {
 try {
-  const mm = await new m({start: true, init: true}, 'earth')
+  const mm = await new m({start: true, init: true}, 'lfc')
   const result = await mm.ipfs.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
   
   console.log({result});

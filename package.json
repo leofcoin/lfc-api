@@ -1,6 +1,6 @@
 {
   "name": "lfc-api",
-  "version": "2.4.9",
+  "version": "2.4.10",
   "description": "",
   "main": "commonjs.js",
   "browser": "browser.js",
@@ -30,6 +30,7 @@
   "dependencies": {
     "@leofcoin/disco-bus": "^1.0.4",
     "disco-room": "^2.4.27",
+    "disco-server": "^1.0.3",
     "ipfs": "^0.40.0",
     "ipld-lfc": "^0.1.4",
     "ipld-lfc-tx": "^0.3.1",

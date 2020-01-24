@@ -4,7 +4,8 @@ import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
 import ipldLfc from 'ipld-lfc';
 import ipldLfcTx from 'ipld-lfc-tx';
-import DiscoRoom from 'disco-room';
+import DiscoServer from 'disco-server';
+import SocketClient from 'socket-request-client'
 
 // import IPFS from 'ipfs';
 import MultiWallet from 'multi-wallet';
@@ -49,9 +50,9 @@ export default class LeofcoinApi extends DiscoBus {
     await IPFS_IMPORT
     
     if (bootstrap !== 'earth') config.Bootstrap = [
-      `/dns4/star.leofcoin.org/tcp/${https ? '4004/wss' : '4003/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-      `/p2p-circuit/dns4/star.leofcoin.org/tcp/${https ? '4004/wss' : '4003/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-      '/p2p-circuit/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF'
+      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF',
+      '/dns4/star.leofcoin.org/tcp/4002/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF',
+      '/dns4/star.leofcoin.org/tcp/443/wss/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF'
     ]
     
     config = {
@@ -76,11 +77,16 @@ export default class LeofcoinApi extends DiscoBus {
         }
       },
       config: {
+        Bootstrap: config.Bootstrap,
         Addresses: {
-          Swarm: [
-            `${https ? '' : `/dns4/star.leofcoin.org/tcp/${https ? 4444 : 4430}/${https ? 'wss' : 'ws'}/p2p-websocket-star`}`
-          ]
+          // Swarm: [
+          //   `${https ? '' : `/dns4/star.leofcoin.org/tcp/4430/ws/p2p-websocket-star`}`
+          // ]
         }
+      },
+      relay: {
+        enabled: true,
+        hop: { enabled: true, active: !https }
       },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     }
@@ -91,6 +97,19 @@ export default class LeofcoinApi extends DiscoBus {
       this.addresses = addresses
       this.peerId = id
       
+      // if (!https) {
+        // this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco'}, {
+          
+          // message: ()
+          
+        // })
+        // console.log(this.discoServer);
+        
+        // this.discoServer.api.on('message', (message))
+      // }
+      // const client =  await SocketClient({port: 443, protocol: 'disco', address: 'star.leofcoin.org/disco', wss: true})
+      // console.log(client)
+      // await client.request({url: 'ping'})
       // this.discoRoom = await new DiscoRoom({
       //   discovery: {
       //     star: {
