@@ -30,14 +30,17 @@
   "dependencies": {
     "@leofcoin/disco-bus": "^1.0.4",
     "disco-room": "^2.4.27",
-    "disco-server": "^1.0.3",
+    "disco-server": "^1.1.0",
     "ipfs": "^0.40.0",
     "ipld-lfc": "^0.1.4",
     "ipld-lfc-tx": "^0.3.1",
     "lfc-storage": "^1.7.1",
+    "little-pubsub": "^1.0.2",
     "multi-wallet": "^1.2.6",
     "node-fetch": "^2.6.0",
-    "qrcode": "^1.4.4"
+    "qrcode": "^1.4.4",
+    "socket-request-client": "^1.2.0",
+    "socket-request-server": "^1.0.0"
   },
   "devDependencies": {
     "browserify": "^16.5.0",

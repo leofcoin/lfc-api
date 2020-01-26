@@ -19,6 +19,7 @@ export default class LeofcoinApi extends DiscoBus {
   constructor(options = { init: true, start: true }, bootstrap) {
     super()
     this.peerMap = new Map()
+    this.discoClientMap = new Map()
     if (options.init) return this._init(options)
   }
   
@@ -30,7 +31,6 @@ export default class LeofcoinApi extends DiscoBus {
     const account = await accountStore.get()
     
     const config = await configStore.get()
-    console.log(config);
     if (!config.identity) {
       await configStore.put(config)
       config.identity = await generateProfile()
@@ -73,15 +73,25 @@ export default class LeofcoinApi extends DiscoBus {
         config: {
           dht: {
             enabled: true
+          },
+          peerDiscovery: {
+            webrtcStar: {
+              interval: 1000,
+              enabled: false
+            }  
           }
+          
         }
       },
       config: {
         Bootstrap: config.Bootstrap,
         Addresses: {
-          // Swarm: [
-          //   `${https ? '' : `/dns4/star.leofcoin.org/tcp/4430/ws/p2p-websocket-star`}`
-          // ]
+        
+          Swarm: [
+            `/ip4/127.0.0.1/tcp/4002/ws`,
+            `/ip4/127.0.0.1/tcp/4001`,
+            `${https ? '/dns4/star.leofcoin.org/tcp/4444/wss/p2p-websocket-star/' : `/dns4/star.leofcoin.org/tcp/4430/ws/p2p-websocket-star/`}`
+          ]
         }
       },
       relay: {
@@ -97,46 +107,69 @@ export default class LeofcoinApi extends DiscoBus {
       this.addresses = addresses
       this.peerId = id
       
-      // if (!https) {
-        // this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco'}, {
+      if (!https) {
+        this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco'}, {
           
           // message: ()
           
-        // })
+        })
+        // const client = await SocketClient('ws://localhost:4455', 'disco')
+        // this.discoClientMap.set(this.peerId, client)
         // console.log(this.discoServer);
         
         // this.discoServer.api.on('message', (message))
-      // }
-      // const client =  await SocketClient({port: 443, protocol: 'disco', address: 'star.leofcoin.org/disco', wss: true})
-      // console.log(client)
-      // await client.request({url: 'ping'})
-      // this.discoRoom = await new DiscoRoom({
-      //   discovery: {
-      //     star: {
-      //       protocol: 'lfc-message'
-      //     },
-      //     peers: [
-      //       `/dnsaddr/star.leofcoin.org/tcp/4002/${https ? '4003/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-      //       `/p2p-circuit/star.leofcoin.org/tcp/${https ? '4003/wss' : '4002/ws'}/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF`,
-      //       '/p2p-circuit/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF'
-      //     ]
-      //   },
-      //   identity: {
-      //     peerId: id
+      }
+      // const d =  await SocketClient({port: 4000, protocol: 'disco', address: '127.0.0.1'})
+      // 
+      // await d.request({url: 'ping'})
+      // await d.request({url: 'peernet', params: { join: true }})
+      // d.on('pubsub', async (ev) => {
+      //   console.log(ev);
+      //   await d.request({url: 'pubsub', params: {
+      //       unsubscribe: true,
+      //       value: 'hello'
+      //     }
+      //   })
+      // })
+      // await d.send({url: 'pubsub', params: { subscribe: true }})
+      // const k = await d.request({url: 'pubsub', params: {
+      //     value: 'hello'
       //   }
       // })
+      // console.log(k);
+      // console.log('ping');
+      
+      
+      const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco')
+      // if (!https) client.join(4455, 'disco')
+      
+      this.discoClientMap.set('star.leofcoin.org', client)
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
-        console.log(`peer discovered: ${peerInfo.id.toB58String()}`)
-        this.peerMap.set(peerInfo.id.toB58String(), false)
+        const peerId = peerInfo.id.toB58String()
+        console.log(`peer discovered: ${peerId}`)
+        // TODO: disco
+        this.peerMap.set(peerId, {connected: false, discoPeer: false})
       })
       this.ipfs.libp2p.on('peer:connect', peerInfo => {
-        console.log(`peer connected ${peerInfo.id.toB58String()}`)
-        this.peerMap.set(peerInfo.id.toB58String(), true)
+        console.log(peerInfo.multiaddrs._multiaddrs[0].toString());
+        const peerId = peerInfo.id.toB58String()
+        console.log(`peer connected ${peerId}`)
+        let info = this.peerMap.get(peerId)
+        if (!info) info = { discoPeer: false }
+        info.connected = true
+        this.peerMap.set(peerId, info)
       })
       this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
-      console.log(`peer disconnected ${peerInfo.id.toB58String()}`)
-        this.peerMap.delete(peerInfo.id.toB58String())
+        console.log(peerInfo.multiaddrs._multiaddrs[0].toString());
+        const peerId = peerInfo.id.toB58String()
+        console.log(`peer disconnected ${peerId}`)
+        const info = this.peerMap.get(peerId)
+        if (info && info.discoPeer) {
+          this.peerMap.get(peerId, info)
+          info.connected = false
+        }
+        else this.peerMap.delete(peerId)
       })
     } catch (e) {
       console.error(e);
