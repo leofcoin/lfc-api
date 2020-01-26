@@ -50,10 +50,16 @@ export default class LeofcoinApi extends DiscoBus {
     await IPFS_IMPORT
     
     if (bootstrap !== 'earth') config.Bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF',
-      '/dns4/star.leofcoin.org/tcp/4002/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF',
-      '/dns4/star.leofcoin.org/tcp/443/wss/ipfs/QmQRRacFueH9iKgUnHdwYvnC4jCwJLxcPhBmZapq6Xh1rF'
+      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmXj53QT7GMYWxagypKcDjBuLqhbQj9G4o3RdExcsUPEnS'
     ]
+    
+    if (!https) config.Addresses = {
+      Swarm: [
+        `/ip4/127.0.0.1/tcp/4002/ws`,
+        `/ip4/127.0.0.1/tcp/4001`,
+        '/p2p-circuit/ipfs/QmXj53QT7GMYWxagypKcDjBuLqhbQj9G4o3RdExcsUPEnS'
+      ]
+    }
     
     config = {
       pass: config.identity.privateKey,
@@ -77,7 +83,7 @@ export default class LeofcoinApi extends DiscoBus {
           peerDiscovery: {
             webrtcStar: {
               interval: 1000,
-              enabled: false
+              enabled: true
             }  
           }
           
@@ -85,18 +91,11 @@ export default class LeofcoinApi extends DiscoBus {
       },
       config: {
         Bootstrap: config.Bootstrap,
-        Addresses: {
-        
-          Swarm: [
-            `/ip4/127.0.0.1/tcp/4002/ws`,
-            `/ip4/127.0.0.1/tcp/4001`,
-            `${https ? '/dns4/star.leofcoin.org/tcp/4444/wss/p2p-websocket-star/' : `/dns4/star.leofcoin.org/tcp/4430/ws/p2p-websocket-star/`}`
-          ]
-        }
+        Addresses: config.Addresses,
       },
       relay: {
         enabled: true,
-        hop: { enabled: true, active: !https }
+        hop: { enabled: true, active: true }
       },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     }
@@ -113,9 +112,9 @@ export default class LeofcoinApi extends DiscoBus {
           // message: ()
           
         })
-        // const client = await SocketClient('ws://localhost:4455', 'disco')
-        // this.discoClientMap.set(this.peerId, client)
-        // console.log(this.discoServer);
+        const client = await SocketClient('ws://localhost:4455', 'disco')
+        this.discoClientMap.set(this.peerId, client)
+        console.log(this.discoServer);
         
         // this.discoServer.api.on('message', (message))
       }
