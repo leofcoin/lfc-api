@@ -41,8 +41,10 @@ try {
   for (const {hash, path} of result) {
     await mm.ipfs.pin.add(hash)
     if (path === 'www') {
-      const published = await mm.ipfs.name.publish(hash, {key: 'thealtereddimension.com'})
-      console.log({published});
+      // setTimeout(async () => {
+        const published = await mm.ipfs.name.publish(hash, {key: 'thealtereddimension.com'})
+        console.log({published});
+      // }, 5000);
     }
   }
 } catch (e) {

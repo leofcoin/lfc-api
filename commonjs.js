@@ -96,15 +96,14 @@ class LeofcoinApi extends DiscoBus {
         resolve();
       });
     
-    if (bootstrap !== 'earth') config.Bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmXj53QT7GMYWxagypKcDjBuLqhbQj9G4o3RdExcsUPEnS'
+    if (bootstrap !== 'earth') bootstrap = [
+      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNWhVfdRqTPVYmdbx9sJ4fADndYvuSL8GgC3jb2CmEAQB'
     ];
     
     if (!https) config.Addresses = {
+    
       Swarm: [
-        `/ip4/127.0.0.1/tcp/4002/ws`,
-        `/ip4/127.0.0.1/tcp/4001`,
-        '/p2p-circuit/ipfs/QmXj53QT7GMYWxagypKcDjBuLqhbQj9G4o3RdExcsUPEnS'
+        '/dns4/star.leofcoin.org/tcp/4444/wss/p2p-websocket-star'
       ]
     };
     
@@ -126,23 +125,16 @@ class LeofcoinApi extends DiscoBus {
         config: {
           dht: {
             enabled: true
-          },
-          peerDiscovery: {
-            webrtcStar: {
-              interval: 1000,
-              enabled: true
-            }  
-          }
-          
+          }          
         }
       },
       config: {
-        Bootstrap: config.Bootstrap,
+        Bootstrap: bootstrap,
         Addresses: config.Addresses,
       },
       relay: {
         enabled: true,
-        hop: { enabled: true, active: true }
+        hop: { enabled: true, active: false }
       },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     };
