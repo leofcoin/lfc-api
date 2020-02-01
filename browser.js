@@ -197,9 +197,17 @@ class LeofcoinApi extends DiscoBus {
         this.peerMap.set(peerId, {connected: false, discoPeer: false});
       });
       this.ipfs.libp2p.on('peer:connect', peerInfo => {
-        console.log(peerInfo.multiaddrs._multiaddrs[0].toString());
+        
+        
         const peerId = peerInfo.id.toB58String();
-        console.log(`peer connected ${peerId}`);
+        if (peerInfo.multiaddrs && peerInfo.multiaddrs) {
+          console.group(`peer connected ${peerId}`);
+          Object.values(peerInfo.multiaddrs).forEach(addr => addr.toString().split(',').forEach(addr => console.log(addr)));
+          console.groupEnd();
+          // console.log(peerInfo.multiaddrs._multiaddrs[0].toString());  
+        } else {
+          console.log(`peer connected ${peerId}`);
+        }
         let info = this.peerMap.get(peerId);
         if (!info) info = { discoPeer: false };
         info.connected = true;
