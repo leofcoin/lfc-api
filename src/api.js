@@ -6,8 +6,6 @@ import ipldLfc from 'ipld-lfc';
 import ipldLfcTx from 'ipld-lfc-tx';
 import DiscoServer from 'disco-server';
 import SocketClient from 'socket-request-client'
-
-// import IPFS from 'ipfs';
 import MultiWallet from 'multi-wallet';
 
 const https = (() => {
@@ -98,7 +96,7 @@ export default class LeofcoinApi extends DiscoBus {
       this.addresses = addresses
       this.peerId = id
       
-      if (!https) {
+      if (!https && !globalThis.window) {
         this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco'}, {
           
           // message: ()

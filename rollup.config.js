@@ -39,22 +39,18 @@ export default [{
         if (!globalThis.LeofcoinStorage) {
           const imported = await import('./lib/level.js');
           globalThis.LeofcoinStorage = imported.default;
-          resolve()
         }
+        resolve()
       })`,
       QRCODE_IMPORT: `if (!globalThis.QRCode) {
         const imported = await import('./../lib/qrcode.js');
         globalThis.QRCode = imported.default;
       }`,
-      IPFS_IMPORT: `new Promise((resolve, reject) => {
+      IPFS_IMPORT: `new Promise(async (resolve, reject) => {
         if (!globalThis.Ipfs) {
-          const script = document.createElement('script')
-          script.onload = () => resolve();
-          script.src = 'https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js'
-          document.body.appendChild(script)
-        } else {
-          resolve()
+          globalThis.Ipfs = require('./node_modules/ipfs/dist/index.min.js');
         }        
+        resolve()
       })`,
       DISCO_ROOM_IMPORT: `
         const imported = await import('./lib/disco-room.js');
