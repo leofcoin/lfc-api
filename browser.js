@@ -64,9 +64,9 @@ class LeofcoinApi extends DiscoBus {
   
   async _init({start}, bootstrap) {
     await new Promise(async (resolve, reject) => {
-        if (!window.LeofcoinStorage) {
+        if (!globalThis.LeofcoinStorage) {
           const imported = await Promise.resolve().then(function () { return level; });
-          window.LeofcoinStorage = imported.default;
+          globalThis.LeofcoinStorage = imported.default;
           resolve();
         }
       });
@@ -93,7 +93,7 @@ class LeofcoinApi extends DiscoBus {
    */
   async start(config = {}, bootstrap = 'lfc') {
     await new Promise((resolve, reject) => {
-        if (!window.Ipfs) {
+        if (!globalThis.Ipfs) {
           const script = document.createElement('script');
           script.onload = () => resolve();
           script.src = 'https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js';

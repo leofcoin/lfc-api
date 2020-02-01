@@ -36,18 +36,18 @@ export default [{
     json(),
     modify({
       STORAGE_IMPORT: `new Promise(async (resolve, reject) => {
-        if (!window.LeofcoinStorage) {
+        if (!globalThis.LeofcoinStorage) {
           const imported = await import('./lib/level.js');
-          window.LeofcoinStorage = imported.default;
+          globalThis.LeofcoinStorage = imported.default;
           resolve()
         }
       })`,
-      QRCODE_IMPORT: `if (!window.QRCode) {
+      QRCODE_IMPORT: `if (!globalThis.QRCode) {
         const imported = await import('./../lib/qrcode.js');
-        window.QRCode = imported.default;
+        globalThis.QRCode = imported.default;
       }`,
       IPFS_IMPORT: `new Promise((resolve, reject) => {
-        if (!window.Ipfs) {
+        if (!globalThis.Ipfs) {
           const script = document.createElement('script')
           script.onload = () => resolve();
           script.src = 'https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js'
