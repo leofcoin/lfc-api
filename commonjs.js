@@ -146,14 +146,16 @@ class LeofcoinApi extends DiscoBus {
       this.peerId = id;
       
       if (!https && !globalThis.window) {
-        this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco'}, {
+        this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco', bootstrap: [
+      { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
+    ]}, {
           
           // message: ()
           
         });
-        const client = await SocketClient('ws://localhost:4455', 'disco');
-        this.discoClientMap.set(this.peerId, client);
-        console.log(this.discoServer);
+        // const client = await SocketClient('ws://localhost:4455', 'disco')
+        // this.discoClientMap.set(this.peerId, client)
+        // console.log(this.discoServer);
         
         // this.discoServer.api.on('message', (message))
       }
