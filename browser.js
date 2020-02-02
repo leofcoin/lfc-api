@@ -103,13 +103,13 @@ class LeofcoinApi extends DiscoBus {
       '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNWhVfdRqTPVYmdbx9sJ4fADndYvuSL8GgC3jb2CmEAQB'
     ];
     
-    if (!https) config.Addresses = {
-    
-      Swarm: [
-        '/dns4/star.leofcoin.org/tcp/4444/wss/p2p-websocket-star'
-      ]
-    };
-    
+    // if (!https) config.Addresses = {
+    // 
+    //   Swarm: [
+    //     '/dns4/star.leofcoin.org/tcp/4444/wss/p2p-websocket-star'
+    //   ]
+    // }
+    // 
     config = {
       pass: config.identity.privateKey,
       repo: configStore.root,
@@ -188,20 +188,11 @@ class LeofcoinApi extends DiscoBus {
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
         const peerId = peerInfo.id.toB58String();
-        console.log(`peer discovered: ${peerId}`);
         // TODO: disco
         this.peerMap.set(peerId, {connected: false, discoPeer: false});
       });
       this.ipfs.libp2p.on('peer:connect', peerInfo => {
         const peerId = peerInfo.id.toB58String();
-        if (peerInfo.multiaddrs && peerInfo.multiaddrs) {
-          console.group(`peer connected ${peerId}`);
-          Object.values(peerInfo.multiaddrs).forEach(addr => addr.toString().split(',').forEach(addr => console.log(addr)));
-          console.groupEnd();
-          // console.log(peerInfo.multiaddrs._multiaddrs[0].toString());  
-        } else {
-          console.log(`peer connected ${peerId}`);
-        }
         let info = this.peerMap.get(peerId);
         if (!info) info = { discoPeer: false };
         info.connected = true;
@@ -209,15 +200,6 @@ class LeofcoinApi extends DiscoBus {
       });
       this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
         const peerId = peerInfo.id.toB58String();
-        if (peerInfo.multiaddrs && peerInfo.multiaddrs) {
-          console.group(`peer connected ${peerId}`);
-          Object.values(peerInfo.multiaddrs).forEach(addr => addr.toString().split(',').forEach(addr => console.log(addr)));
-          console.groupEnd();
-          // console.log(peerInfo.multiaddrs._multiaddrs[0].toString());  
-        } else {
-          console.log(`peer connected ${peerId}`);
-        }
-        console.log(`peer disconnected ${peerId}`);
         const info = this.peerMap.get(peerId);
         if (info && info.discoPeer) {
           this.peerMap.get(peerId, info);
