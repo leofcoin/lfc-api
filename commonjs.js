@@ -158,6 +158,11 @@ class LeofcoinApi extends DiscoBus {
         // console.log(this.discoServer);
         
         // this.discoServer.api.on('message', (message))
+      } else {
+        const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco');
+        // if (!https) client.join(4455, 'disco')
+        
+        this.discoClientMap.set('star.leofcoin.org', client);
       }
       // const d =  await SocketClient({port: 4000, protocol: 'disco', address: '127.0.0.1'})
       // 
@@ -180,10 +185,7 @@ class LeofcoinApi extends DiscoBus {
       // console.log('ping');
       
       
-      const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco');
-      // if (!https) client.join(4455, 'disco')
-      
-      this.discoClientMap.set('star.leofcoin.org', client);
+    
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
         const peerId = peerInfo.id.toB58String();
