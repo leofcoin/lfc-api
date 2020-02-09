@@ -103,13 +103,16 @@ class LeofcoinApi extends DiscoBus {
       '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNWhVfdRqTPVYmdbx9sJ4fADndYvuSL8GgC3jb2CmEAQB'
     ];
     
-    // if (!https) config.Addresses = {
-    // 
-    //   Swarm: [
-    //     '/dns4/star.leofcoin.org/tcp/4444/wss/p2p-websocket-star'
-    //   ]
-    // }
-    // 
+    if (!https && !globalThis.window) config.Addresses = {
+    
+      Swarm: [
+        '/ip4/127.0.0.1/tcp/4030/ws',
+        '/ip4/127.0.0.1/tcp/4020',
+        '/ip6/::/tcp/4010'
+      ],
+      Gateway: '/ip4/127.0.0.1/tcp/8080'
+    };
+    
     config = {
       pass: config.identity.privateKey,
       repo: configStore.root,
@@ -152,10 +155,16 @@ class LeofcoinApi extends DiscoBus {
         this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco', bootstrap: [
       { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
     ]}, {
-          
-          // message: ()
-          
-        });
+      chainHeight: () => (globalThis.chain.length - 1),
+      blockHash: ({value}) => {
+        return globalThis.chain[value].hash
+      },
+      lastBlock: () => {
+        const index = (globalThis.chain.length - 1);
+        return globalThis.chain[index]
+      } 
+    });
+        console.log();
         // const client = await SocketClient('ws://localhost:4455', 'disco')
         // this.discoClientMap.set(this.peerId, client)
         // console.log(this.discoServer);
@@ -167,24 +176,25 @@ class LeofcoinApi extends DiscoBus {
         
         this.discoClientMap.set('star.leofcoin.org', client);
       }
-      // const d =  await SocketClient({port: 4000, protocol: 'disco', address: '127.0.0.1'})
-      // 
-      // await d.request({url: 'ping'})
+      // const d =  await SocketClient('ws://localhost:4000', 'disco')
+      // api.discoServer.connections.set('localhost:4000', d)
+      // console.log(d);
+      // const p = await d.request({url: 'ping'})
       // await d.request({url: 'peernet', params: { join: true }})
-      // d.on('pubsub', async (ev) => {
-      //   console.log(ev);
+      // // d.on('pubsub', async (ev) => {
+      // //   console.log(ev);
       //   await d.request({url: 'pubsub', params: {
       //       unsubscribe: true,
       //       value: 'hello'
       //     }
       //   })
-      // })
+      // // })
       // await d.send({url: 'pubsub', params: { subscribe: true }})
       // const k = await d.request({url: 'pubsub', params: {
       //     value: 'hello'
       //   }
       // })
-      // console.log(k);
+      // console.log(p);
       // console.log('ping');
       
       
