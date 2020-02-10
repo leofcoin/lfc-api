@@ -49,6 +49,8 @@ const generateProfile = async () => {
   }
 };
 
+// import globalApi from './global-api.js';
+
 const https = (() => {
   if (!globalThis.location) return false;
   return Boolean(globalThis.location.protocol === 'https:')
@@ -152,53 +154,26 @@ class LeofcoinApi extends DiscoBus {
       this.peerId = id;
       
       if (!https && !globalThis.window) {
-        this.discoServer = await new DiscoServer({port: 4455, protocol: 'disco', bootstrap: [
-      { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
-    ]}, {
-      chainHeight: () => (globalThis.chain.length - 1),
-      blockHash: ({value}) => {
-        return globalThis.chain[value].hash
-      },
-      lastBlock: () => {
-        const index = (globalThis.chain.length - 1);
-        return globalThis.chain[index]
-      } 
-    });
-        console.log();
-        // const client = await SocketClient('ws://localhost:4455', 'disco')
-        // this.discoClientMap.set(this.peerId, client)
-        // console.log(this.discoServer);
-        
-        // this.discoServer.api.on('message', (message))
+        this.discoServer = await new DiscoServer({
+          port: 4455,
+          protocol: 'disco',
+          bootstrap: [
+            { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
+          ]}, {
+          chainHeight: (response) => response.send(globalThis.chain.length),
+          chainIndex: (response) => response.send(globalThis.chain.length - 1),
+          blockHash: (params, response) => 
+            response.send(globalThis.chain[params].hash),
+          lastBlock: response => {
+            const index = (globalThis.chain.length - 1);
+            response.send(globalThis.chain[index]);
+          } 
+        });
       } else {
         const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco');
-        // if (!https) client.join(4455, 'disco')
         
         this.discoClientMap.set('star.leofcoin.org', client);
-      }
-      // const d =  await SocketClient('ws://localhost:4000', 'disco')
-      // api.discoServer.connections.set('localhost:4000', d)
-      // console.log(d);
-      // const p = await d.request({url: 'ping'})
-      // await d.request({url: 'peernet', params: { join: true }})
-      // // d.on('pubsub', async (ev) => {
-      // //   console.log(ev);
-      //   await d.request({url: 'pubsub', params: {
-      //       unsubscribe: true,
-      //       value: 'hello'
-      //     }
-      //   })
-      // // })
-      // await d.send({url: 'pubsub', params: { subscribe: true }})
-      // const k = await d.request({url: 'pubsub', params: {
-      //     value: 'hello'
-      //   }
-      // })
-      // console.log(p);
-      // console.log('ping');
-      
-      
-    
+      }    
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
         const peerId = peerInfo.id.toB58String();
@@ -224,6 +199,7 @@ class LeofcoinApi extends DiscoBus {
     } catch (e) {
       console.error(e);
     }
+    // await globalApi(this)
     return this
   }
   
