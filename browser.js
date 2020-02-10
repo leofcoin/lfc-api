@@ -31837,6 +31837,27 @@ var server = _interopDefault(require('socket-request-server'));
 var requestClient = _interopDefault(require('socket-request-client'));
 var PubSub = _interopDefault(require('little-pubsub'));
 
+const peerMap = new Map();
+
+var defaultApi = () => {
+  return {
+    peernet: (params, response) => {
+      if (params.join) {
+        response.send(peerMap.entries());
+        peerMap.set(params.peerId, {
+          address: params.address
+        });
+        return
+      }
+      if (!params.join) {
+        peerMap.delete(params.peerId);
+        return response.send()
+      }
+      return response.send(peerMap.entries())
+    }
+  }
+};
+
 globalThis.pubsub = globalThis.pubsub || new PubSub();
 
 class DiscoServer {
@@ -31853,7 +31874,7 @@ class DiscoServer {
     this.protocol = config.protocol;
     this.credentials = config.credentials; 
     this.bootstrap = config.bootstrap;
-    this.api = api;
+    this.api = { ...defaultApi, ...api };
     return this._init();
   }
   
@@ -31863,7 +31884,7 @@ class DiscoServer {
     if (this.bootstrap) {
       for (const {address, protocols} of this.bootstrap) {
         const client = await requestClient(address, protocols);
-        this.connections.push(client.client);  
+        this.connections.push(client);
       }
       
     }
