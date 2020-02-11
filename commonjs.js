@@ -105,11 +105,11 @@ class LeofcoinApi extends DiscoBus {
     if (!https && !globalThis.window) config.Addresses = {
     
       Swarm: [
-        '/ip4/127.0.0.1/tcp/4030/ws',
-        '/ip4/127.0.0.1/tcp/4020',
+        '/ip4/0.0.0.0/tcp/4030/ws',
+        '/ip4/0.0.0.0/tcp/4020',
         '/ip6/::/tcp/4010'
       ],
-      Gateway: '/ip4/127.0.0.1/tcp/8080'
+      Gateway: '/ip4/0.0.0.0/tcp/8080'
     };
     
     config = {
