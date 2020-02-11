@@ -59,14 +59,14 @@ const https = (() => {
 })();
 
 class LeofcoinApi extends DiscoBus {
-  constructor(options = { init: true, start: true }, bootstrap) {
+  constructor(options = { init: true, start: true, bootstrap: 'lfc' }) {
     super();
     this.peerMap = new Map();
     this.discoClientMap = new Map();
     if (options.init) return this._init(options)
   }
   
-  async _init({start}, bootstrap) {
+  async _init({start, bootstrap}) {
     await new Promise((resolve, reject) => {
       if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
       resolve();
@@ -92,13 +92,13 @@ class LeofcoinApi extends DiscoBus {
    * @param {object} config
    * @return {object} {addresses, id, ipfs}
    */
-  async start(config = {}, bootstrap = 'lfc') {
+  async start(config = {}, bootstrap) {
     await new Promise((resolve, reject) => {
         if (!Ipfs) Ipfs = require('ipfs');
         resolve();
       });
     
-    if (bootstrap !== 'earth') bootstrap = [
+    if (bootstrap === 'lfc') bootstrap = [
       '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNWhVfdRqTPVYmdbx9sJ4fADndYvuSL8GgC3jb2CmEAQB'
     ];
     
