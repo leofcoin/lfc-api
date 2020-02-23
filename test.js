@@ -14,10 +14,11 @@ const {codes, privateKey, mnemonic } = {
   // tape.plan(2);
 (async () => {
 try {
-  const mm = await new m({start: true, init: true}, 'lfc')
+  const mm = await new m({start: true, init: true, bootstrap: 'lfc'}, 'lfc')
   const result = await mm.ipfs.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
+  const veldshop = await mm.ipfs.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
   
-  console.log({result});
+  console.log({result, veldshop});
   // const pinned = await mm.ipfs.pin.ls()
   // for (const pin of pinned) {
   //   console.log(pin);
@@ -41,10 +42,13 @@ try {
   for (const {hash, path} of result) {
     await mm.ipfs.pin.add(hash)
     if (path === 'www') {
+      await mm.ipfs.swarm.connect('/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNj9xVadJo2c4U7VY6ZNoQxRYxdGBt8XpgKpRCAP4bNEa')
       // setTimeout(async () => {
         const published = await mm.ipfs.name.publish(hash, {key: 'thealtereddimension.com'})
         console.log({published});
       // }, 5000);
+      
+      console.log(await mm.ipfs.swarm.peers());
     }
   }
 } catch (e) {
