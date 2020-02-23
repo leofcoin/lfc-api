@@ -49,10 +49,10 @@ export default class LeofcoinApi extends DiscoBus {
     await IPFS_IMPORT
     
     if (bootstrap === 'lfc') bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNWhVfdRqTPVYmdbx9sJ4fADndYvuSL8GgC3jb2CmEAQB'
+      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNj9xVadJo2c4U7VY6ZNoQxRYxdGBt8XpgKpRCAP4bNEa'
     ]
     
-    if (!https && !globalThis.window) config.Addresses = {
+    if (!https && !globalThis.navigator) config.Addresses = {
     
       Swarm: [
         '/ip4/0.0.0.0/tcp/4030/ws',
@@ -77,10 +77,16 @@ export default class LeofcoinApi extends DiscoBus {
         }
       },
       libp2p: {
+        switch: {
+          maxParallelDials: globalThis.navigator ? 10 : 100
+        },
         config: {
           dht: {
             enabled: true
-          }          
+          },
+          peerDiscovery: {
+            autoDial: false
+          }     
         }
       },
       config: {
@@ -89,7 +95,7 @@ export default class LeofcoinApi extends DiscoBus {
       },
       relay: {
         enabled: true,
-        hop: { enabled: true, active: false }
+        hop: { enabled: true, active: true }
       },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     }
@@ -98,8 +104,12 @@ export default class LeofcoinApi extends DiscoBus {
       this.ipfs = await Ipfs.create(config)
       const { id, addresses } = await this.ipfs.id()
       this.addresses = addresses
-      this.peerId = id
+      this.peerId = id     
       
+      const strap = await this.ipfs.config.get('Bootstrap')
+      for (const addr of strap) {
+        await this.ipfs.swarm.connect(addr)
+      }
       if (!https && !globalThis.window) {
         this.discoServer = await new DiscoServer({
           port: 4455,
@@ -117,10 +127,24 @@ export default class LeofcoinApi extends DiscoBus {
           } 
         })
       } else {
-        const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco')
-        
-        this.discoClientMap.set('star.leofcoin.org', client)
-      }    
+        try {
+          const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco')
+          const peers = await client.peernet.join({
+            address: addresses[addresses.length - 1],
+            peerId: this.peerId
+          })
+          for (const peer of peers) {
+            try {
+              await this.ipfs.swarm.connect(peer)
+            } catch (e) {
+              console.warn(e);
+            }
+          }
+          this.discoClientMap.set('star.leofcoin.org', client)
+        } catch (e) {
+          console.error(e);
+        }
+      }
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
         const peerId = peerInfo.id.toB58String()

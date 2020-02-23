@@ -13,8 +13,24 @@ export default class LeofcoinStorage {
     if (readdirSync) try {
       readdirSync(this.root)
     } catch (e) {
-      if (e.code === 'ENOENT') mkdirSync(this.root)
-      else throw e
+      let _path = homedir()
+      const parts = root.split('/')
+      if (e.code === 'ENOENT') {
+        
+        if (parts.length > 0) {
+          for (const path of parts) {
+            _path = join(_path, path)
+            try {
+              readdirSync(_path)
+            } catch (e) {
+              if (e.code === 'ENOENT') mkdirSync(_path)
+              else throw e
+            }
+          }
+        } else {
+          mkdirSync(this.root)
+        }
+      } else throw e
     }
     this.db = new LevelStore(join(this.root, path));
     // this.db = level(path, { prefix: 'lfc-'})
