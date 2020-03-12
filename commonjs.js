@@ -35,6 +35,7 @@ require('ipld-lfc');
 require('ipld-lfc-tx');
 var DiscoServer = _interopDefault(require('disco-server'));
 var SocketClient = _interopDefault(require('socket-request-client'));
+var IpfsHttpClient = _interopDefault(require('ipfs-http-client'));
 
 //
 
@@ -51,8 +52,9 @@ const generateProfile = async () => {
   }
 };
 
+const { globSource } = IpfsHttpClient;
 // import globalApi from './global-api.js';
-
+let hasDaemon = false;
 const https = (() => {
   if (!globalThis.location) return false;
   return Boolean(globalThis.location.protocol === 'https:')
@@ -66,22 +68,40 @@ class LeofcoinApi extends DiscoBus {
     if (options.init) return this._init(options)
   }
   
+  async hasDaemon() {
+    try {
+      let response = await fetch('http://127.0.0.1:5050/api/version');
+      response = await response.text();
+      if (!isNaN(Number(response))) return true
+      else return false
+    } catch (e) {
+      return false
+    }
+  }
+  
   async _init({start, bootstrap}) {
-    await new Promise((resolve, reject) => {
+    hasDaemon = await this.hasDaemon();
+    let config;
+    if (hasDaemon) {
+      const response = await fetch('http://127.0.0.1:5050/api/config');
+      config = await response.json();
+    } else {
+      await new Promise((resolve, reject) => {
       if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
       resolve();
     });
-    
-    globalThis.accountStore = new LeofcoinStorage('lfc-account');
-    globalThis.configStore = new LeofcoinStorage('lfc-config');
-    const account = await accountStore.get();
-    
-    const config = await configStore.get();
-    if (!config.identity) {
-      await configStore.put(config);
-      config.identity = await generateProfile();
-      await accountStore.put({ public: { walletId: config.identity.walletId }});
-      await configStore.put(config);
+      
+      globalThis.accountStore = new LeofcoinStorage('lfc-account');
+      globalThis.configStore = new LeofcoinStorage('lfc-config');
+      const account = await accountStore.get();
+      
+      config = await configStore.get();
+      if (!config.identity) {
+        await configStore.put(config);
+        config.identity = await generateProfile();
+        await accountStore.put({ public: { walletId: config.identity.walletId }});
+        await configStore.put(config);
+      }
     }
     if (start) await this.start(config, bootstrap);
     return this;
@@ -93,73 +113,101 @@ class LeofcoinApi extends DiscoBus {
    * @return {object} {addresses, id, ipfs}
    */
   async start(config = {}, bootstrap) {
-    await new Promise((resolve, reject) => {
+    if (hasDaemon) this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
+    else {
+      await new Promise((resolve, reject) => {
         if (!Ipfs) Ipfs = require('ipfs');
         resolve();
       });
-    
-    if (bootstrap === 'lfc') bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmNj9xVadJo2c4U7VY6ZNoQxRYxdGBt8XpgKpRCAP4bNEa'
-    ];
-    
-    if (!https && !globalThis.navigator) config.Addresses = {
-    
-      Swarm: [
-        '/ip4/0.0.0.0/tcp/4030/ws',
-        '/ip4/0.0.0.0/tcp/4020',
-        '/ip6/::/tcp/4010'
-      ],
-      Gateway: '/ip4/0.0.0.0/tcp/8080'
-    };
-    
-    config = {
-      pass: config.identity.privateKey,
-      repo: configStore.root,
-      ipld: {
-        async loadFormat (codec) {
-          if (codec === multicodec.LEOFCOIN_BLOCK) {
-            return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc'))); })
-          } else if (codec === multicodec.LEOFCOIN_TX) {
-            return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc-tx'))); })
-          } else {
-            throw new Error('unable to load format ' + multicodec.print[codec])
+      
+      if (bootstrap === 'lfc') bootstrap = [
+        '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
+      ];
+      
+      if (!https && !globalThis.navigator) config.Addresses = {
+      
+        Swarm: [
+          '/ip4/0.0.0.0/tcp/4030/ws',
+          '/ip4/0.0.0.0/tcp/4020'
+        ],
+        Gateway: '/ip4/0.0.0.0/tcp/8080',
+        API: '/ip4/127.0.0.1/tcp/5555'
+      };
+      
+      config = {
+        pass: config.identity.privateKey,
+        repo: configStore.root,
+        ipld: {
+          async loadFormat (codec) {
+            if (codec === multicodec.LEOFCOIN_BLOCK) {
+              return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc'))); })
+            } else if (codec === multicodec.LEOFCOIN_TX) {
+              return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc-tx'))); })
+            } else {
+              throw new Error('unable to load format ' + multicodec.print[codec])
+            }
           }
-        }
-      },
-      libp2p: {
-        switch: {
-          maxParallelDials: globalThis.navigator ? 10 : 100
+        },
+        libp2p: {
+          switch: {
+            maxParallelDials: globalThis.navigator ? 10 : 100
+          },
+          config: {
+            dht: {
+              enabled: true
+            },
+            peerDiscovery: {
+              autoDial: false
+            }     
+          }
         },
         config: {
-          dht: {
-            enabled: true
+          Bootstrap: bootstrap,
+          Discovery: {
+            MDNS: {
+              Enabled: !globalThis.navigator,
+              Interval: 1000
+            },
+            webRTCStar: {
+              Enabled: true
+            }
           },
-          peerDiscovery: {
-            autoDial: false
-          }     
+          Swarm: {
+            ConnMgr: {
+              LowWater: 200,
+              HighWater: 500
+            }
+          },
+          Addresses: config.Addresses,
+          API: {
+            HTTPHeaders: {
+              'Access-Control-Allow-Origin': ['*'],
+              'Access-Control-Allow-Methods': ['GET', 'PUT', 'POST']
+            }
+          }
+        },
+        relay: {
+          enabled: true,
+          hop: { enabled: true, active: true }
+        },
+        EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
+      };
+      try {
+        this.ipfs = await Ipfs.create(config);
+        const { id, addresses } = await this.ipfs.id();
+        this.addresses = addresses;
+        this.peerId = id;     
+        
+        const strap = await this.ipfs.config.get('Bootstrap');
+        for (const addr of strap) {
+          await this.ipfs.swarm.connect(addr);
         }
-      },
-      config: {
-        Bootstrap: bootstrap,
-        Addresses: config.Addresses,
-      },
-      relay: {
-        enabled: true,
-        hop: { enabled: true, active: true }
-      },
-      EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
-    };
+      } catch (e) {
+        console.error(e);
+      }
+    }
     // TODO: encrypt config
     try {
-      this.ipfs = await Ipfs.create(config);
-      const { id, addresses } = await this.ipfs.id();
-      this.addresses = addresses;
-      this.peerId = id;     
-      
-      const strap = await this.ipfs.config.get('Bootstrap');
-      for (const addr of strap) {
-        await this.ipfs.swarm.connect(addr);
-      }
       if (!https && !globalThis.window) {
         this.discoServer = await new DiscoServer({
           port: 4455,
@@ -220,6 +268,17 @@ class LeofcoinApi extends DiscoBus {
     } catch (e) {
       console.error(e);
     }
+
+    this.api = {
+      addFromFs: async (path, recursive = true) => {
+        console.log(globSource(path, { recursive }));
+        const files = [];
+        for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
+          files.push(file);
+        }
+        return files;
+      }
+    };
     // await globalApi(this)
     return this
   }
