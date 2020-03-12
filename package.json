@@ -31,7 +31,8 @@
     "@leofcoin/disco-bus": "^1.0.4",
     "disco-room": "^2.4.27",
     "disco-server": "^1.2.5",
-    "ipfs": "^0.40.0",
+    "ipfs": "^0.41.2",
+    "ipfs-http-client": "^42.0.0",
     "ipld-lfc": "^0.1.4",
     "ipld-lfc-tx": "^0.3.1",
     "lfc-storage": "^1.8.1",
@@ -44,7 +45,7 @@
   },
   "devDependencies": {
     "browserify": "^16.5.0",
-    "rollup": "^1.31.1",
+    "rollup": "^1.32.1",
     "rollup-plugin-commonjs": "^9.3.4",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-modify": "^3.0.0",
@@ -53,6 +54,6 @@
     "rollup-plugin-re": "^1.0.7",
     "rollup-plugin-replace": "^2.2.0",
     "rollup-plugin-terser": "^5.2.0",
-    "tape": "^4.13.0"
+    "tape": "^4.13.2"
   }
 }
