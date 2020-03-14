@@ -32,6 +32,7 @@ require('ipld-lfc-tx');
 var DiscoServer = _interopDefault(require('disco-server'));
 var SocketClient = _interopDefault(require('socket-request-client'));
 var IpfsHttpClient = _interopDefault(require('ipfs-http-client'));
+var daemon = require('@leofcoin/daemon');
 
 //
 
@@ -79,31 +80,123 @@ class LeofcoinApi extends DiscoBus {
     hasDaemon = await this.hasDaemon();
     let config;
     if (hasDaemon) {
-      const response = await fetch('http://127.0.0.1:5050/api/config');
-      config = await response.json();
+      let response = await fetch('http://127.0.0.1:5050/api/config');
+      config = await response.json();      
+      this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
     } else {
-      await new Promise(async (resolve, reject) => {
+      if (!https && !globalThis.navigator) {
+        await daemon.run();
+        this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
+      } else {
+        await new Promise(async (resolve, reject) => {
         if (!globalThis.LeofcoinStorage) {
           const imported = await Promise.resolve().then(function () { return level; });
           globalThis.LeofcoinStorage = imported.default;
         }
         resolve();
       });
-      
-      globalThis.accountStore = new LeofcoinStorage('lfc-account');
-      globalThis.configStore = new LeofcoinStorage('lfc-config');
-      const account = await accountStore.get();
-      
-      config = await configStore.get();
-      if (!config.identity) {
-        await configStore.put(config);
-        config.identity = await generateProfile();
-        await accountStore.put({ public: { walletId: config.identity.walletId }});
-        await configStore.put(config);
-      }
+        
+        globalThis.accountStore = new LeofcoinStorage('lfc-account');
+        globalThis.configStore = new LeofcoinStorage('lfc-config');
+        const account = await accountStore.get();
+        
+        config = await configStore.get();
+        if (!config.identity) {
+          await configStore.put(config);
+          config.identity = await generateProfile();
+          await accountStore.put({ public: { walletId: config.identity.walletId }});
+          await configStore.put(config);
+        }
+        await this.spawnJsNode(config, bootstrap);
+      }      
     }
     if (start) await this.start(config, bootstrap);
     return this;
+  }
+  
+  async spawnJsNode (config, bootstrap) {    
+    await new Promise(async (resolve, reject) => {
+        if (!globalThis.Ipfs) {
+          globalThis.Ipfs = require('./node_modules/ipfs/dist/index.min.js');
+        }        
+        resolve();
+      });
+    
+    if (bootstrap === 'lfc') bootstrap = [
+      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
+    ];
+    config = {
+      pass: config.identity.privateKey,
+      repo: configStore.root,
+      ipld: {
+        async loadFormat (codec) {
+          if (codec === multicodec.LEOFCOIN_BLOCK) {
+            return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc'))); })
+          } else if (codec === multicodec.LEOFCOIN_TX) {
+            return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc-tx'))); })
+          } else {
+            throw new Error('unable to load format ' + multicodec.print[codec])
+          }
+        }
+      },
+      libp2p: {
+        switch: {
+          maxParallelDials: globalThis.navigator ? 10 : 100
+        },
+        config: {
+          dht: {
+            enabled: true
+          },
+          peerDiscovery: {
+            autoDial: false
+          }     
+        }
+      },
+      config: {
+        Bootstrap: bootstrap,
+        Discovery: {
+          MDNS: {
+            Enabled: !globalThis.navigator,
+            Interval: 1000
+          },
+          webRTCStar: {
+            Enabled: true
+          }
+        },
+        Swarm: {
+          ConnMgr: {
+            LowWater: 200,
+            HighWater: 500
+          }
+        },
+        Addresses: config.Addresses,
+        API: {
+          HTTPHeaders: {
+            'Access-Control-Allow-Origin': ['*'],
+            'Access-Control-Allow-Methods': ['GET', 'PUT', 'POST']
+          }
+        }
+      },
+      relay: {
+        enabled: true,
+        hop: { enabled: true, active: true }
+      },
+      EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
+    };
+    
+    try {
+      this.ipfs = await Ipfs.create(config);
+      const { id, addresses } = await this.ipfs.id();
+      this.addresses = addresses;
+      this.peerId = id;     
+      
+      const strap = await this.ipfs.config.get('Bootstrap');
+      for (const addr of strap) {
+        await this.ipfs.swarm.connect(addr);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
   
   /**
@@ -112,101 +205,16 @@ class LeofcoinApi extends DiscoBus {
    * @return {object} {addresses, id, ipfs}
    */
   async start(config = {}, bootstrap) {
-    if (hasDaemon) this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
-    else {
-      await new Promise(async (resolve, reject) => {
-        if (!globalThis.Ipfs) {
-          globalThis.Ipfs = require('./node_modules/ipfs/dist/index.min.js');
-        }        
-        resolve();
-      });
-      
-      if (bootstrap === 'lfc') bootstrap = [
-        '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
-      ];
-      
-      if (!https && !globalThis.navigator) config.Addresses = {
-      
-        Swarm: [
-          '/ip4/0.0.0.0/tcp/4030/ws',
-          '/ip4/0.0.0.0/tcp/4020'
-        ],
-        Gateway: '/ip4/0.0.0.0/tcp/8080',
-        API: '/ip4/127.0.0.1/tcp/5555'
-      };
-      
-      config = {
-        pass: config.identity.privateKey,
-        repo: configStore.root,
-        ipld: {
-          async loadFormat (codec) {
-            if (codec === multicodec.LEOFCOIN_BLOCK) {
-              return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc'))); })
-            } else if (codec === multicodec.LEOFCOIN_TX) {
-              return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc-tx'))); })
-            } else {
-              throw new Error('unable to load format ' + multicodec.print[codec])
-            }
-          }
-        },
-        libp2p: {
-          switch: {
-            maxParallelDials: globalThis.navigator ? 10 : 100
-          },
-          config: {
-            dht: {
-              enabled: true
-            },
-            peerDiscovery: {
-              autoDial: false
-            }     
-          }
-        },
-        config: {
-          Bootstrap: bootstrap,
-          Discovery: {
-            MDNS: {
-              Enabled: !globalThis.navigator,
-              Interval: 1000
-            },
-            webRTCStar: {
-              Enabled: true
-            }
-          },
-          Swarm: {
-            ConnMgr: {
-              LowWater: 200,
-              HighWater: 500
-            }
-          },
-          Addresses: config.Addresses,
-          API: {
-            HTTPHeaders: {
-              'Access-Control-Allow-Origin': ['*'],
-              'Access-Control-Allow-Methods': ['GET', 'PUT', 'POST']
-            }
-          }
-        },
-        relay: {
-          enabled: true,
-          hop: { enabled: true, active: true }
-        },
-        EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
-      };
-      try {
-        this.ipfs = await Ipfs.create(config);
-        const { id, addresses } = await this.ipfs.id();
-        this.addresses = addresses;
-        this.peerId = id;     
-        
-        const strap = await this.ipfs.config.get('Bootstrap');
-        for (const addr of strap) {
-          await this.ipfs.swarm.connect(addr);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    // if (!https && !globalThis.navigator) config.Addresses = {
+    // 
+    //   Swarm: [
+    //     '/ip4/0.0.0.0/tcp/4030/ws',
+    //     '/ip4/0.0.0.0/tcp/4020'
+    //   ],
+    //   Gateway: '/ip4/0.0.0.0/tcp/8080',
+    //   API: '/ip4/127.0.0.1/tcp/5555'
+    // }
+    
     // TODO: encrypt config
     try {
       if (!https && !globalThis.window) {
