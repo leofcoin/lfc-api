@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/leofcoin/lfc-api#readme",
   "dependencies": {
+    "@leofcoin/daemon": "^1.0.14",
     "@leofcoin/disco-bus": "^1.0.4",
     "disco-room": "^2.4.27",
     "disco-server": "^1.2.5",
