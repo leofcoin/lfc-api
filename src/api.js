@@ -50,17 +50,21 @@ export default class LeofcoinApi extends DiscoBus {
       } else {
         await STORAGE_IMPORT
         
-        globalThis.accountStore = new LeofcoinStorage('lfc-account')
-        globalThis.configStore = new LeofcoinStorage('lfc-config')
-        const account = await accountStore.get()
-        
-        config = await configStore.get()
-        if (!config.identity) {
-          await configStore.put(config)
-          config.identity = await generateProfile()
-          await accountStore.put({ public: { walletId: config.identity.walletId }});
-          await configStore.put(config);
-        }
+        if (hasDaemon) {
+          config = await response.json()  
+        } else {
+          globalThis.accountStore = new LeofcoinStorage('lfc-account')
+          globalThis.configStore = new LeofcoinStorage('lfc-config')
+          const account = await accountStore.get()
+          
+          config = await configStore.get()
+          if (!config.identity) {
+            await configStore.put(config)
+            config.identity = await generateProfile()
+            await accountStore.put({ public: { walletId: config.identity.walletId }});
+            await configStore.put(config);
+          }  
+        }        
         await this.spawnJsNode(config, bootstrap)
       }      
     }
