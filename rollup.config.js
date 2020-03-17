@@ -35,6 +35,8 @@ export default [{
   plugins: [
     json(),
     modify({
+      GLOBSOURCE_IMPORT: '',
+      DAEMON_IMPORT: '',
       STORAGE_IMPORT: `new Promise(async (resolve, reject) => {
         if (!globalThis.LeofcoinStorage) {
           const imported = await import('./lib/level.js');
@@ -82,7 +84,6 @@ export default [{
       patterns: [
         {
           transform: (code, id) => { // replace by function
-            console.log(code);
             id = id.replace(`${process.cwd()}\\`, '').replace(/\\/g, '/');
             if (exclude.indexOf(id) !== -1) return '{}';
             return code;
@@ -105,6 +106,12 @@ export default [{
   plugins: [
     json(),
     modify({
+      GLOBSOURCE_IMPORT: `const IpfsHttpClient = require('ipfs-http-client');
+      globalThis.IpfsHttpClient = IpfsHttpClient
+      const { globSource } = IpfsHttpClient;
+      globalThis.globSource = globSource;`,
+      DAEMON_IMPORT: `const { run } = require('@leofcoin/daemon');
+      await run()`,
     STORAGE_IMPORT: `new Promise((resolve, reject) => {
       if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
       resolve()
