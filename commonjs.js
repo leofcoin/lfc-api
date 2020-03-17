@@ -35,8 +35,6 @@ require('ipld-lfc');
 require('ipld-lfc-tx');
 var DiscoServer = _interopDefault(require('disco-server'));
 var SocketClient = _interopDefault(require('socket-request-client'));
-var IpfsHttpClient = _interopDefault(require('ipfs-http-client'));
-var daemon = require('@leofcoin/daemon');
 
 //
 
@@ -53,8 +51,6 @@ const generateProfile = async () => {
   }
 };
 
-const { globSource } = IpfsHttpClient;
-// import globalApi from './global-api.js';
 let hasDaemon = false;
 const https = (() => {
   if (!globalThis.location) return false;
@@ -85,11 +81,20 @@ class LeofcoinApi extends DiscoBus {
     let config;
     if (hasDaemon && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config');
-      config = await response.json();      
+      config = await response.json();
+      const IpfsHttpClient = require('ipfs-http-client');
+      globalThis.IpfsHttpClient = IpfsHttpClient;
+      const { globSource } = IpfsHttpClient;
+      globalThis.globSource = globSource; 
       this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
     } else {
       if (!https && !globalThis.navigator && !forceJS) {
-        await daemon.run();
+        const { run } = require('@leofcoin/daemon');
+      await run();
+        const IpfsHttpClient = require('ipfs-http-client');
+      globalThis.IpfsHttpClient = IpfsHttpClient;
+      const { globSource } = IpfsHttpClient;
+      globalThis.globSource = globSource;
         this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
       } else {
         await new Promise((resolve, reject) => {
@@ -283,6 +288,8 @@ class LeofcoinApi extends DiscoBus {
 
     this.api = {
       addFromFs: async (path, recursive = true) => {
+        
+        
         console.log(globSource(path, { recursive }));
         const files = [];
         for await (const file of this.ipfs.add(globSource(path, { recursive }))) {

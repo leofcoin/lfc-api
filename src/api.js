@@ -7,10 +7,7 @@ import ipldLfcTx from 'ipld-lfc-tx';
 import DiscoServer from 'disco-server';
 import SocketClient from 'socket-request-client'
 import MultiWallet from 'multi-wallet';
-import IpfsHttpClient from 'ipfs-http-client';
-const { globSource } = IpfsHttpClient;
-import { run } from '@leofcoin/daemon';
-// import globalApi from './global-api.js';
+
 let hasDaemon = false;
 const https = (() => {
   if (!globalThis.location) return false;
@@ -41,11 +38,13 @@ export default class LeofcoinApi extends DiscoBus {
     let config;
     if (hasDaemon && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config')
-      config = await response.json()      
+      config = await response.json()
+      GLOBSOURCE_IMPORT 
       this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
     } else {
       if (!https && !globalThis.navigator && !forceJS) {
-        await run()
+        DAEMON_IMPORT
+        GLOBSOURCE_IMPORT
         this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
       } else {
         await STORAGE_IMPORT
@@ -233,6 +232,8 @@ export default class LeofcoinApi extends DiscoBus {
 
     this.api = {
       addFromFs: async (path, recursive = true) => {
+        
+        
         console.log(globSource(path, { recursive }));
         const files = []
         for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
