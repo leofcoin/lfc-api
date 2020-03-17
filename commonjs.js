@@ -62,7 +62,7 @@ const https = (() => {
 })();
 
 class LeofcoinApi extends DiscoBus {
-  constructor(options = { init: true, start: true, bootstrap: 'lfc' }) {
+  constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false }) {
     super();
     this.peerMap = new Map();
     this.discoClientMap = new Map();
@@ -80,15 +80,15 @@ class LeofcoinApi extends DiscoBus {
     }
   }
   
-  async _init({start, bootstrap}) {
+  async _init({start, bootstrap, forceJS}) {
     hasDaemon = await this.hasDaemon();
     let config;
-    if (hasDaemon) {
+    if (hasDaemon && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config');
       config = await response.json();      
       this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
     } else {
-      if (!https && !globalThis.navigator) {
+      if (!https && !globalThis.navigator && !forceJS) {
         await daemon.run();
         this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
       } else {
@@ -140,7 +140,7 @@ class LeofcoinApi extends DiscoBus {
       },
       libp2p: {
         switch: {
-          maxParallelDials: globalThis.navigator ? 10 : 100
+          maxParallelDials: 10
         },
         config: {
           dht: {
