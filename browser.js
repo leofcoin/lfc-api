@@ -1,5 +1,5 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.LeofcoinApi = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-(function (Buffer){
+(function (Buffer,__dirname){
 'use strict';
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
@@ -26,8 +26,9 @@ function _interopNamespace(e) {
 var MultiWallet = _interopDefault(require('multi-wallet'));
 require('node-fetch');
 var AES = _interopDefault(require('crypto-js/aes.js'));
-require('crypto-js/enc-utf8.js');
+var ENC = _interopDefault(require('crypto-js/enc-utf8.js'));
 var QRCode = _interopDefault(require('qrcode'));
+var path = require('path');
 var DiscoBus = _interopDefault(require('@leofcoin/disco-bus'));
 var multicodec = _interopDefault(require('multicodec'));
 require('ipld-lfc');
@@ -50,6 +51,20 @@ const expected = (expected, actual) => {
 
   return `\nExpected:\n\t${expected.join('\n\t')}\n\nactual:\n\t${entries.join('\n\t')}`;
 };
+
+class e{static hasCamera(){return navigator.mediaDevices.enumerateDevices().then((a)=>a.some((a)=>"videoinput"===a.kind)).catch(()=>!1)}constructor(a,c,b=e.DEFAULT_CANVAS_SIZE){this.$video=a;this.$canvas=document.createElement("canvas");this._onDecode=c;this._paused=this._active=!1;this.$canvas.width=b;this.$canvas.height=b;this._sourceRect={x:0,y:0,width:b,height:b};this._onCanPlay=this._onCanPlay.bind(this);this._onPlay=this._onPlay.bind(this);this._onVisibilityChange=this._onVisibilityChange.bind(this);
+this.$video.addEventListener("canplay",this._onCanPlay);this.$video.addEventListener("play",this._onPlay);document.addEventListener("visibilitychange",this._onVisibilityChange);this._qrWorker=new Worker(e.WORKER_PATH);}destroy(){this.$video.removeEventListener("canplay",this._onCanPlay);this.$video.removeEventListener("play",this._onPlay);document.removeEventListener("visibilitychange",this._onVisibilityChange);this.stop();this._qrWorker.postMessage({type:"close"});}start(){if(this._active&&!this._paused)return Promise.resolve();
+"https:"!==window.location.protocol&&console.warn("The camera stream is only accessible if the page is transferred via https.");this._active=!0;this._paused=!1;if(document.hidden)return Promise.resolve();clearTimeout(this._offTimeout);this._offTimeout=null;if(this.$video.srcObject)return this.$video.play(),Promise.resolve();let a="environment";return this._getCameraStream("environment",!0).catch(()=>{a="user";return this._getCameraStream()}).then((c)=>{this.$video.srcObject=c;this._setVideoMirror(a);}).catch((a)=>
+{this._active=!1;throw a;})}stop(){this.pause();this._active=!1;}pause(){this._paused=!0;this._active&&(this.$video.pause(),this._offTimeout||(this._offTimeout=setTimeout(()=>{let a=this.$video.srcObject&&this.$video.srcObject.getTracks()[0];a&&(a.stop(),this._offTimeout=this.$video.srcObject=null);},300)));}static scanImage(a,c=null,b=null,d=null,f=!1,g=!1){let h=!1,l=new Promise((l,g)=>{b||(b=new Worker(e.WORKER_PATH),h=!0,b.postMessage({type:"inversionMode",data:"both"}));let n,m,k;m=(a)=>{"qrResult"===
+a.data.type&&(b.removeEventListener("message",m),b.removeEventListener("error",k),clearTimeout(n),null!==a.data.data?l(a.data.data):g("QR code not found."));};k=(a)=>{b.removeEventListener("message",m);b.removeEventListener("error",k);clearTimeout(n);g("Scanner error: "+(a?a.message||a:"Unknown Error"));};b.addEventListener("message",m);b.addEventListener("error",k);n=setTimeout(()=>k("timeout"),3E3);e._loadImage(a).then((a)=>{a=e._getImageData(a,c,d,f);b.postMessage({type:"decode",data:a},[a.data.buffer]);}).catch(k);});
+c&&g&&(l=l.catch(()=>e.scanImage(a,null,b,d,f)));return l=l.finally(()=>{h&&b.postMessage({type:"close"});})}setGrayscaleWeights(a,c,b,d=!0){this._qrWorker.postMessage({type:"grayscaleWeights",data:{red:a,green:c,blue:b,useIntegerApproximation:d}});}setInversionMode(a){this._qrWorker.postMessage({type:"inversionMode",data:a});}_onCanPlay(){this._updateSourceRect();this.$video.play();}_onPlay(){this._updateSourceRect();this._scanFrame();}_onVisibilityChange(){document.hidden?this.pause():this._active&&
+this.start();}_updateSourceRect(){let a=Math.round(2/3*Math.min(this.$video.videoWidth,this.$video.videoHeight));this._sourceRect.width=this._sourceRect.height=a;this._sourceRect.x=(this.$video.videoWidth-a)/2;this._sourceRect.y=(this.$video.videoHeight-a)/2;}_scanFrame(){if(!this._active||this.$video.paused||this.$video.ended)return !1;requestAnimationFrame(()=>{e.scanImage(this.$video,this._sourceRect,this._qrWorker,this.$canvas,!0).then(this._onDecode,(a)=>{this._active&&"QR code not found."!==a&&
+console.error(a);}).then(()=>this._scanFrame());});}_getCameraStream(a,c=!1){let b=[{width:{min:1024}},{width:{min:768}},{}];a&&(c&&(a={exact:a}),b.forEach((b)=>b.facingMode=a));return this._getMatchingCameraStream(b)}_getMatchingCameraStream(a){return 0===a.length?Promise.reject("Camera not found."):navigator.mediaDevices.getUserMedia({video:a.shift()}).catch(()=>this._getMatchingCameraStream(a))}_setVideoMirror(a){this.$video.style.transform="scaleX("+("user"===a?-1:1)+")";}static _getImageData(a,c=
+null,b=null,d=!1){b=b||document.createElement("canvas");let f=c&&c.x?c.x:0,g=c&&c.y?c.y:0,h=c&&c.width?c.width:a.width||a.videoWidth;c=c&&c.height?c.height:a.height||a.videoHeight;d||b.width===h&&b.height===c||(b.width=h,b.height=c);d=b.getContext("2d",{alpha:!1});d.imageSmoothingEnabled=!1;d.drawImage(a,f,g,h,c,0,0,b.width,b.height);return d.getImageData(0,0,b.width,b.height)}static _loadImage(a){if(a instanceof HTMLCanvasElement||a instanceof HTMLVideoElement||window.ImageBitmap&&a instanceof window.ImageBitmap||
+window.OffscreenCanvas&&a instanceof window.OffscreenCanvas)return Promise.resolve(a);if(a instanceof Image)return e._awaitImageLoad(a).then(()=>a);if(a instanceof File||a instanceof URL||"string"===typeof a){let c=new Image;c.src=a instanceof File?URL.createObjectURL(a):a;return e._awaitImageLoad(c).then(()=>{a instanceof File&&URL.revokeObjectURL(c.src);return c})}return Promise.reject("Unsupported image type.")}static _awaitImageLoad(a){return new Promise((c,b)=>{if(a.complete&&0!==a.naturalWidth)c();
+else {let d,f;d=()=>{a.removeEventListener("load",d);a.removeEventListener("error",f);c();};f=()=>{a.removeEventListener("load",d);a.removeEventListener("error",f);b("Image load error");};a.addEventListener("load",d);a.addEventListener("error",f);}})}}e.DEFAULT_CANVAS_SIZE=400;e.WORKER_PATH="qr-scanner-worker.min.js";
+
+e.WORKER_PATH = path.join(__dirname, 'qr-scanner-worker.js');
 
 const generateQR = async (input, options = {}) => {
   options = { ...DEFAULT_QR_OPTIONS, ...options };
@@ -78,9 +93,14 @@ const generateProfile = async () => {
   }
 };
 
-const account = {
-  import: async (identity, password) => {
-    if (!identity) throw new Error('expected identity to be defined')
+
+const importAccount = async (identity, password, qr = false) => {
+  if (qr) {
+    identity = await e.scanImage(identity);
+    console.log({identity});
+    identity = AES.decrypt(identity, password);
+    console.log(identity.toString());
+    identity = JSON.parse(identity.toString(ENC));
     if (identity.mnemonic) {
       const wallet = new MultiWallet('leofcoin:olivia');
       wallet.recover(identity.mnemonic);
@@ -92,29 +112,54 @@ const account = {
         privateKey: external.privateKey,
         walletId: external.id
       };
-    }
-    let config = await configStore.get();
-    config = { ...config, ...{ identity } };
-    await configStore.put(config);
-  },
-  export: async password => {
-    if (!password) throw expected(['password: String'], password)
+      let config = await configStore.get();
+      config = { ...config, ...{ identity } };
+      await configStore.put(config);
+    }    
+    return identity
     
-    const identity = await configStore.get('identity');
-    const account = await accountStore.get('public');
-    
-    if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
-    
-    const encrypted = AES.encrypt(JSON.stringify({ ...identity, ...account }), password).toString();
-    return await generateQR(encrypted)
+    // return await generateQR(decrypted)
   }
+  if (!identity) throw new Error('expected identity to be defined')
+  if (identity.mnemonic) {
+    const wallet = new MultiWallet('leofcoin:olivia');
+    wallet.recover(identity.mnemonic);
+    const account = wallet.account(0);
+    const external = account.external(0);
+    identity = {
+      mnemonic: identity.mnemonic,
+      publicKey: external.publicKey,
+      privateKey: external.privateKey,
+      walletId: external.id
+    };
+  }
+  let config = await configStore.get();
+  config = { ...config, ...{ identity } };
+  await configStore.put(config);
+  
+  return identity
 };
 
-var account$1 = { 
+const exportAccount = async (password, qr = false) => {
+  if (!password) throw expected(['password: String'], password)
+  
+  const identity = await configStore.get('identity');
+  const account = await accountStore.get('public');
+  
+  if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
+  
+  const encrypted = AES.encrypt(JSON.stringify({ ...identity, ...account }), password).toString();
+  if (!qr) return encrypted
+  
+  return await generateQR(encrypted)
+};
+
+var account = { 
   generateQR,
   generateProfileQR,
   generateProfile,
-  account
+  importAccount,
+  exportAccount  
 };
 
 let hasDaemon = false;
@@ -128,7 +173,7 @@ class LeofcoinApi extends DiscoBus {
     super();
     this.peerMap = new Map();
     this.discoClientMap = new Map();
-    this.account = account$1;
+    this.account = account;
     if (options.init) return this._init(options)
   }
   
@@ -492,7 +537,7 @@ var level = /*#__PURE__*/Object.freeze({
 
 module.exports = LeofcoinApi;
 
-}).call(this,require("buffer").Buffer)
+}).call(this,require("buffer").Buffer,"/")
 },{"./node_modules/ipfs/dist/index.min.js":131,"@leofcoin/disco-bus":2,"buffer":39,"crypto-js/aes.js":57,"crypto-js/enc-utf8.js":61,"datastore-level":68,"disco-server":76,"fs":32,"interface-datastore":127,"ipld-lfc":133,"ipld-lfc-tx":132,"multi-wallet":176,"multicodec":186,"node-fetch":201,"os":202,"path":203,"qrcode":224,"socket-request-client":282}],2:[function(require,module,exports){
 (function (global){
 !function(){"use strict";!function(s){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=s();else if("function"==typeof define&&define.amd)define([],s);else{("undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this).DiscoBus=s()}}((function(){return function s(e,i,r){function u(n,b){if(!i[n]){if(!e[n]){var o="function"==typeof require&&require;if(!b&&o)return o(n,!0);if(t)return t(n,!0);var l=new Error("Cannot find module '"+n+"'");throw l.code="MODULE_NOT_FOUND",l}var c=i[n]={exports:{}};e[n][0].call(c.exports,(function(s){return u(e[n][1][s]||s)}),c,c.exports,s,e,i,r)}return i[n].exports}for(var t="function"==typeof require&&require,n=0;n<r.length;n++)u(r[n]);return u}({1:[function(s,e,i){var r,u=(r=s("little-pubsub"))&&"object"==typeof r&&"default"in r?r.default:r;const t=()=>(globalThis.globalBus||(globalThis.globalBus=new u),globalThis.globalBus);e.exports=class{set bus(s){this._bus=s}get bus(){return this._bus||t()}constructor(s){s&&(this.bus=new u)}subscribe(s,e){this.bus.subscribe(s,e)}unsubscribe(s,e){this.bus.unsubscribe(s,e)}publish(s,e){this.bus.publish(s,e)}}},{"little-pubsub":2}],2:[function(s,e,i){e.exports=class{constructor(){this.subscribers={}}subscribe(s,e,i){void 0===i&&(i=e),this.subscribers[s]=this.subscribers[s]||{handlers:[],value:null},this.subscribers[s].handlers.push(e.bind(i))}unsubscribe(s,e,i){void 0===i&&(i=e);const r=this.subscribers[s].handlers.indexOf(e.bind(i));this.subscribers[s].handlers.splice(r)}publish(s,e){this.subscribers[s]&&this.subscribers[s].value!==e&&(this.subscribers[s].handlers.forEach(i=>{i(e,this.subscribers[s].value)}),this.subscribers[s].value=e)}}},{}]},{},[1])(1)}))}();
