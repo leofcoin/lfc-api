@@ -3,11 +3,11 @@ import { DEFAULT_QR_OPTIONS } from './../constants.js';
 import { expected } from './../utils.js';
 import AES from 'crypto-js/aes.js';
 import ENC from 'crypto-js/enc-utf8.js';
+import QRCode from 'qrcode'
 
 const generateQR = async (input, options = {}) => {
   options = { ...DEFAULT_QR_OPTIONS, ...options };
 
-  QRCODE_IMPORT
   
   return QRCode.toDataURL(input, options);
 }
@@ -65,6 +65,13 @@ const account = {
 }
 
 export { 
+  generateQR,
+  generateProfileQR,
+  generateProfile,
+  account
+}
+
+export default { 
   generateQR,
   generateProfileQR,
   generateProfile,

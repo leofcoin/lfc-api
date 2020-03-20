@@ -1,4 +1,4 @@
-import { generateProfile } from './api/account'
+import account from './api/account'
 import DiscoBus from '@leofcoin/disco-bus';
 import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
@@ -19,6 +19,7 @@ export default class LeofcoinApi extends DiscoBus {
     super()
     this.peerMap = new Map()
     this.discoClientMap = new Map()
+    this.account = account
     if (options.init) return this._init(options)
   }
   
@@ -59,7 +60,7 @@ export default class LeofcoinApi extends DiscoBus {
           config = await configStore.get()
           if (!config.identity) {
             await configStore.put(config)
-            config.identity = await generateProfile()
+            config.identity = await this.account.generateProfile()
             await accountStore.put({ public: { walletId: config.identity.walletId }});
             await configStore.put(config);
           }  

@@ -27,8 +27,9 @@ function _interopNamespace(e) {
 
 var MultiWallet = _interopDefault(require('multi-wallet'));
 require('node-fetch');
-require('crypto-js/aes.js');
+var AES = _interopDefault(require('crypto-js/aes.js'));
 require('crypto-js/enc-utf8.js');
+var QRCode = _interopDefault(require('qrcode'));
 var DiscoBus = _interopDefault(require('@leofcoin/disco-bus'));
 var multicodec = _interopDefault(require('multicodec'));
 require('ipld-lfc');
@@ -36,6 +37,34 @@ require('ipld-lfc-tx');
 var DiscoServer = _interopDefault(require('disco-server'));
 var SocketClient = _interopDefault(require('socket-request-client'));
 
+const DEFAULT_QR_OPTIONS = {
+  scale: 5,
+  margin: 0,
+  errorCorrectionLevel: 'M',
+  rendererOpts: {
+    quality: 1
+  }
+};
+
+const expected = (expected, actual) => {
+  const entries = Object.entries(actual)
+    .map(entry => entry.join(!entry[1] ? `: undefined - ${entry[1]} ` : `: ${typeof entry[1]} - `));
+
+  return `\nExpected:\n\t${expected.join('\n\t')}\n\nactual:\n\t${entries.join('\n\t')}`;
+};
+
+const generateQR = async (input, options = {}) => {
+  options = { ...DEFAULT_QR_OPTIONS, ...options };
+
+  
+  return QRCode.toDataURL(input, options);
+};
+
+const generateProfileQR = async (profile = {}, options = {}) => {
+  if (!profile || !profile.mnemonic) throw expected(['mnemonic: String'], profile)
+  profile = JSON.stringify(profile);
+  return generateQR(profile, options);
+};
 //
 
 const generateProfile = async () => {
@@ -51,6 +80,45 @@ const generateProfile = async () => {
   }
 };
 
+const account = {
+  import: async (identity, password) => {
+    if (!identity) throw new Error('expected identity to be defined')
+    if (identity.mnemonic) {
+      const wallet = new MultiWallet('leofcoin:olivia');
+      wallet.recover(identity.mnemonic);
+      const account = wallet.account(0);
+      const external = account.external(0);
+      identity = {
+        mnemonic: identity.mnemonic,
+        publicKey: external.publicKey,
+        privateKey: external.privateKey,
+        walletId: external.id
+      };
+    }
+    let config = await configStore.get();
+    config = { ...config, ...{ identity } };
+    await configStore.put(config);
+  },
+  export: async password => {
+    if (!password) throw expected(['password: String'], password)
+    
+    const identity = await configStore.get('identity');
+    const account = await accountStore.get('public');
+    
+    if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
+    
+    const encrypted = AES.encrypt(JSON.stringify({ ...identity, ...account }), password).toString();
+    return await generateQR(encrypted)
+  }
+};
+
+var account$1 = { 
+  generateQR,
+  generateProfileQR,
+  generateProfile,
+  account
+};
+
 let hasDaemon = false;
 const https = (() => {
   if (!globalThis.location) return false;
@@ -62,6 +130,7 @@ class LeofcoinApi extends DiscoBus {
     super();
     this.peerMap = new Map();
     this.discoClientMap = new Map();
+    this.account = account$1;
     if (options.init) return this._init(options)
   }
   
@@ -112,7 +181,7 @@ class LeofcoinApi extends DiscoBus {
           config = await configStore.get();
           if (!config.identity) {
             await configStore.put(config);
-            config.identity = await generateProfile();
+            config.identity = await this.account.generateProfile();
             await accountStore.put({ public: { walletId: config.identity.walletId }});
             await configStore.put(config);
           }  
