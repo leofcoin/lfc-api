@@ -7,6 +7,7 @@ import replace from 'rollup-plugin-re';
 import { terser } from 'rollup-plugin-terser';
 import builtins from 'rollup-plugin-node-builtins';
 
+
 try {
   execSync('rm browser.js.tmp-browserify-*')
 } catch (e) {
@@ -14,7 +15,7 @@ try {
 execSync('cp node_modules/lfc-storage/src/level.js src/lib/level.js')
 execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
 // execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
-
+execSync('cp node_modules/qr-scanner/qr-scanner-worker.min.js qr-scanner-worker.js')
 const exclude = [
   'node_modules/bip39/wordlists/chinese_simplified.json',
   'node_modules/bip39/wordlists/chinese_traditional.json',

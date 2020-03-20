@@ -6,6 +6,9 @@
   "browser": "browser.js",
   "module": "src/api.js",
   "scripts": {
+    "pp": "npm version patch && npm publish",
+    "pm": "npm version minor && npm publish",
+    "pma": "npm version major && npm publish",
     "c": "rollup -c",
     "b": "browserify browser.js --standalone LeofcoinApi --exclude=bip39/src/wordlists/italian.json -o browser.js ",
     "build": "npm run c && npm run b",
@@ -40,12 +43,14 @@
     "little-pubsub": "^1.0.2",
     "multi-wallet": "^1.2.6",
     "node-fetch": "^2.6.0",
+    "qr-scanner": "^1.1.1",
     "qrcode": "^1.4.4",
     "socket-request-client": "^1.4.0",
     "socket-request-server": "^1.0.0"
   },
   "devDependencies": {
     "browserify": "^16.5.0",
+    "cp": "^0.2.0",
     "rollup": "^1.32.1",
     "rollup-plugin-commonjs": "^9.3.4",
     "rollup-plugin-json": "^4.0.0",
