@@ -97,7 +97,7 @@ export default [{
   output: {
     file: 'commonjs.js',
     format: 'cjs',
-    intro: 'let QRCode;\nlet Ipfs;\nlet LeofcoinStorage;'
+    intro: 'let Ipfs;\nlet LeofcoinStorage;'
   },
   plugins: [
     json(),
