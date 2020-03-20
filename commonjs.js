@@ -1,6 +1,5 @@
 'use strict';
 
-let QRCode;
 let Ipfs;
 let LeofcoinStorage;
 
