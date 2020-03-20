@@ -44,10 +44,6 @@ export default [{
         }
         resolve()
       })`,
-      QRCODE_IMPORT: `if (!globalThis.QRCode) {
-        const imported = await import('./../lib/qrcode.js');
-        globalThis.QRCode = imported.default;
-      }`,
       IPFS_IMPORT: `new Promise(async (resolve, reject) => {
         if (!globalThis.Ipfs) {
           globalThis.Ipfs = require('./node_modules/ipfs/dist/index.min.js');
