@@ -190,7 +190,7 @@ export default class LeofcoinApi extends DiscoBus {
         try {
           const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco')
           const peers = await client.peernet.join({
-            address: addresses[addresses.length - 1],
+            address: this.addresses[this.addresses.length - 1],
             peerId: this.peerId
           })
           for (const peer of peers) {
