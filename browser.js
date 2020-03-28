@@ -399,7 +399,6 @@ class LeofcoinApi extends DiscoBus {
     this.api = {
       addFromFs: async (path, recursive = true) => {
         
-        
         console.log(globSource(path, { recursive }));
         const files = [];
         for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
@@ -516,6 +515,11 @@ class LeofcoinStorage$1 {
     return this.db.delete(new Key(key))
   }
   
+  async size() {
+    const object = await this.query();
+    return Object.keys(object).length
+  }
+  
   possibleJSON(data) {
     let string = data.toString();
     if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' || 
@@ -525,7 +529,8 @@ class LeofcoinStorage$1 {
         !isNaN(string)) 
         return JSON.parse(string);
         
-    return data;
+    if (isNaN(data)) return data.toString()
+    return data
   }
 
 }

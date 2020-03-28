@@ -14,7 +14,7 @@ const {codes, privateKey, mnemonic } = {
   // tape.plan(2);
 (async () => {
 try {
-  const mm = await new m({start: true, init: true, bootstrap: 'lfc'}, 'lfc')
+  const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: true}, 'lfc')
   console.log(mm.ipfs);
   const result = await mm.api.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
   const veldshop = await mm.api.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
