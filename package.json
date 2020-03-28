@@ -39,7 +39,7 @@
     "ipfs-http-client": "^42.0.0",
     "ipld-lfc": "^0.1.4",
     "ipld-lfc-tx": "^0.3.1",
-    "lfc-storage": "^1.8.1",
+    "lfc-storage": "^1.9.0",
     "little-pubsub": "^1.0.2",
     "multi-wallet": "^1.2.6",
     "node-fetch": "^2.6.0",

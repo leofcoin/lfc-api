@@ -234,7 +234,6 @@ export default class LeofcoinApi extends DiscoBus {
     this.api = {
       addFromFs: async (path, recursive = true) => {
         
-        
         console.log(globSource(path, { recursive }));
         const files = []
         for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
