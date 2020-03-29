@@ -36,6 +36,9 @@ require('ipld-lfc');
 require('ipld-lfc-tx');
 var DiscoServer = _interopDefault(require('disco-server'));
 var SocketClient = _interopDefault(require('socket-request-client'));
+var DHT = _interopDefault(require('libp2p-kad-dht'));
+var PeerInfo = _interopDefault(require('peer-info'));
+var PeerId = _interopDefault(require('peer-id'));
 
 const DEFAULT_QR_OPTIONS = {
   scale: 5,
@@ -229,7 +232,7 @@ class LeofcoinApi extends DiscoBus {
             await accountStore.put({ public: { walletId: config.identity.walletId }});
             await configStore.put(config);
           }  
-        }        
+        }
         await this.spawnJsNode(config, bootstrap);
       }      
     }
@@ -243,8 +246,28 @@ class LeofcoinApi extends DiscoBus {
         resolve();
       });
     
+      if (!https && !globalThis.window) {
+        config.Addresses = {
+      
+        Swarm: [
+          '/p2p-circuit/ip4/0.0.0.0/tcp/4035/ws/ipfs/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs',
+          '/ip4/0.0.0.0/tcp/4030/ws',
+          '/ip4/0.0.0.0/tcp/4020',
+        ],
+        Gateway: '/ip4/0.0.0.0/tcp/8080',
+        API: '/ip4/127.0.0.1/tcp/5555'
+      };
+      } else {
+        config.Addresses = {
+          Swarm: [],
+          API: '',
+          Gateway: '',
+          Delegates: []        
+        };
+      }
+      
     if (bootstrap === 'lfc') bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/ipfs/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
+      '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
     ];
     config = {
       pass: config.identity.privateKey,
@@ -264,12 +287,27 @@ class LeofcoinApi extends DiscoBus {
         switch: {
           maxParallelDials: 10
         },
+        modules: {
+          dht: DHT
+        },
         config: {
           dht: {
+            kBucketSize: 20,
+            enabled: true,
+            randomWalk: {
+              enabled: true,            // Allows to disable discovery (enabled by default)
+              interval: 300e3,
+              timeout: 10e3
+            }
+          },
+          webRTCStar: {
             enabled: true
           },
           peerDiscovery: {
-            autoDial: false
+            autoDial: false,
+            websocketStar: {
+              enabled: true
+            }
           }     
         }
       },
@@ -282,6 +320,9 @@ class LeofcoinApi extends DiscoBus {
           },
           webRTCStar: {
             Enabled: true
+          },
+          websocketStar: {
+            enabled: true
           }
         },
         Swarm: {
@@ -289,11 +330,14 @@ class LeofcoinApi extends DiscoBus {
             LowWater: 200,
             HighWater: 500
           }
+        },        
+        Pubsub: {
+          Enabled: true
         },
         Addresses: config.Addresses,
         API: {
           HTTPHeaders: {
-            'Access-Control-Allow-Origin': ['*'],
+            'Access-Control-Allow-Origin': ['http://localhost'],
             'Access-Control-Allow-Methods': ['GET', 'PUT', 'POST']
           }
         }
@@ -307,9 +351,10 @@ class LeofcoinApi extends DiscoBus {
     
     try {
       this.ipfs = await Ipfs.create(config);
-      const { id, addresses } = await this.ipfs.id();
+      const { id, addresses, publicKey } = await this.ipfs.id();
       this.addresses = addresses;
-      this.peerId = id;     
+      this.peerId = id;
+      this.publicKey = publicKey;
       
       const strap = await this.ipfs.config.get('Bootstrap');
       for (const addr of strap) {
@@ -326,20 +371,12 @@ class LeofcoinApi extends DiscoBus {
    * @return {object} {addresses, id, ipfs}
    */
   async start(config = {}, bootstrap) {
-    // if (!https && !globalThis.navigator) config.Addresses = {
-    // 
-    //   Swarm: [
-    //     '/ip4/0.0.0.0/tcp/4030/ws',
-    //     '/ip4/0.0.0.0/tcp/4020'
-    //   ],
-    //   Gateway: '/ip4/0.0.0.0/tcp/8080',
-    //   API: '/ip4/127.0.0.1/tcp/5555'
-    // }
-    
     // TODO: encrypt config
     try {
       if (!https && !globalThis.window) {
         this.discoServer = await new DiscoServer({
+          peerId: this.peerId,
+          ipfs: this.ipfs,
           port: 4455,
           protocol: 'disco',
           bootstrap: [
@@ -356,44 +393,69 @@ class LeofcoinApi extends DiscoBus {
         });
       } else {
         try {
-          const client = await SocketClient('wss://star.leofcoin.org/disco', 'disco');
-          const peers = await client.peernet.join({
-            address: this.addresses[this.addresses.length - 1],
-            peerId: this.peerId
+          this.client = await SocketClient('wss://star.leofcoin.org/disco', 'disco');
+          let address = this.addresses[this.addresses.length - 1];
+          this.client.pubsub.publish('peernet:join', this.peerId);
+          this.client.pubsub.subscribe('peernet:join', async peer => {
+            console.log(peer + ' joined');
+            const peerInfo = await new PeerInfo(peer);
+            peerInfo.multiaddrs.add('/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit');
+            peerInfo.protocols.add('/ipfs/kad/1.0.0');
+            this.ipfs.libp2p.emit('peer:discover', peerInfo);
+            if (peerInfo.id !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peerInfo.id}`);
           });
-          for (const peer of peers) {
-            try {
-              await this.ipfs.swarm.connect(peer);
-            } catch (e) {
-              console.warn(e);
-            }
-          }
-          this.discoClientMap.set('star.leofcoin.org', client);
+          if (!address) address = this.peerId;
+          console.log(address);
+          // const peers = await client.peernet.join({
+          //   address,
+          //   peerId: this.peerId
+          // })
+          // for (const peer of peers) {
+          //   if (peer) try {
+          //     const peerInfo = await new PeerInfo(peer)
+          //     peerInfo.multiaddrs.add('/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit')
+          //     peerInfo.protocols.add('/ipfs/kad/1.0.0')
+          //     this.ipfs.libp2p.emit('peer:discover', peerInfo)
+          //     if (peer !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peer}`)
+          // 
+          //   } catch (e) {
+          //     console.warn(e);
+          //   }
+          // }
+          this.discoClientMap.set('star.leofcoin.org', this.client);
         } catch (e) {
           console.error(e);
         }
       }
       
       this.ipfs.libp2p.on('peer:discover', peerInfo => {
-        const peerId = peerInfo.id.toB58String();
-        // TODO: disco
-        this.peerMap.set(peerId, {connected: false, discoPeer: false});
+        console.log(`${peerInfo.id} discovered`);
+        const peerId = PeerId.createFromB58String(peerInfo.id);
+        console.log(peerId.toString());
+        if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String();
+        if (this.peerMap.get(peerId.toString())) return
+        this.peerMap.set(peerId.toString(), {connected: false, discoPeer: false});
+        
+        
       });
       this.ipfs.libp2p.on('peer:connect', peerInfo => {
-        const peerId = peerInfo.id.toB58String();
-        let info = this.peerMap.get(peerId);
+        console.log(`${peerInfo.id} connected`);
+        
+        if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String();
+        let info = this.peerMap.get(peerInfo.id);
         if (!info) info = { discoPeer: false };
         info.connected = true;
-        this.peerMap.set(peerId, info);
+        this.peerMap.set(peerInfo.id, info);
       });
       this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
-        const peerId = peerInfo.id.toB58String();
-        const info = this.peerMap.get(peerId);
+        console.log(peerInfo);
+        if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String();
+        const info = this.peerMap.get(peerInfo.id);
         if (info && info.discoPeer) {
-          this.peerMap.get(peerId, info);
+          this.peerMap.get(peerInfo.id, info);
           info.connected = false;
         }
-        else this.peerMap.delete(peerId);
+        else this.peerMap.delete(peerInfo.id);
       });
     } catch (e) {
       console.error(e);
