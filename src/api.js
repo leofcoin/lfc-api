@@ -40,7 +40,7 @@ export default class LeofcoinApi extends DiscoBus {
   async _init({start, bootstrap, forceJS}) {
     hasDaemon = await this.hasDaemon()
     let config;
-    if (hasDaemon && !forceJS) {
+    if (hasDaemon && !https && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config')
       config = await response.json()
       GLOBSOURCE_IMPORT 
@@ -53,7 +53,7 @@ export default class LeofcoinApi extends DiscoBus {
       } else {
         await STORAGE_IMPORT
         
-        if (hasDaemon) {
+        if (hasDaemon && !https) {
           config = await response.json()  
         } else {
           globalThis.accountStore = new LeofcoinStorage('lfc-account')
@@ -82,7 +82,6 @@ export default class LeofcoinApi extends DiscoBus {
         config.Addresses = {
       
         Swarm: [
-          '/p2p-circuit/ip4/0.0.0.0/tcp/4035/ws/ipfs/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs',
           '/ip4/0.0.0.0/tcp/4030/ws',
           '/ip4/0.0.0.0/tcp/4020',
         ],
@@ -101,6 +100,7 @@ export default class LeofcoinApi extends DiscoBus {
     if (bootstrap === 'lfc') bootstrap = [
       '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
     ]
+    console.log(config.identity);
     config = {
       pass: config.identity.privateKey,
       repo: configStore.root,
@@ -236,6 +236,7 @@ export default class LeofcoinApi extends DiscoBus {
             this.ipfs.libp2p.emit('peer:discover', peerInfo)
             if (peerInfo.id !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peerInfo.id}`)
           })
+          this.client.pubsub.subscribe('peernet:message', msg => console.log(msg))
           if (!address) address = this.peerId
           console.log(address);
           // const peers = await client.peernet.join({
@@ -295,7 +296,9 @@ export default class LeofcoinApi extends DiscoBus {
 
     this.api = {
       addFromFs: async (path, recursive = true) => {
-        
+        if (!globalThis.globSource) {
+          GLOBSOURCE_IMPORT
+        }
         console.log(globSource(path, { recursive }));
         const files = []
         for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
