@@ -99,7 +99,9 @@ export default class LeofcoinApi extends DiscoBus {
       
     if (bootstrap === 'lfc') bootstrap = [
       '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
-    ]
+    ];
+    else if (bootstrap === 'star') bootstrap = [];
+    
     console.log(config.identity);
     config = {
       pass: config.identity.privateKey,
@@ -202,18 +204,21 @@ export default class LeofcoinApi extends DiscoBus {
    * @param {object} config
    * @return {object} {addresses, id, ipfs}
    */
-  async start(config = {}, bootstrap) {
+  async start(config = {}, bootstrap, discoStrap) {
     // TODO: encrypt config
     try {
       if (!https && !globalThis.window) {
+        if (bootstrap === 'star') discoStrap = [];
+        else discoStrap = [
+          { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
+        ]
         this.discoServer = await new DiscoServer({
           peerId: this.peerId,
           ipfs: this.ipfs,
           port: 4455,
           protocol: 'disco',
-          bootstrap: [
-            { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
-          ]}, {
+          bootstrap: discoStrap
+        }, {
           chainHeight: (response) => response.send(globalThis.chain.length),
           chainIndex: (response) => response.send(globalThis.chain.length - 1),
           blockHash: (params, response) => 
