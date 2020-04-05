@@ -389,8 +389,13 @@ class LeofcoinApi extends DiscoBus {
         }, {
           chainHeight: (response) => response.send(globalThis.chain.length),
           chainIndex: (response) => response.send(globalThis.chain.length - 1),
-          blockHash: (params, response) => 
-            response.send(globalThis.chain[params].hash),
+          blockHash: (params, response) => {
+            if (!response) {
+              response = params;
+              params = 0;
+            }
+            response.send(globalThis.chain[params].hash);
+          },
           lastBlock: response => {
             const index = (globalThis.chain.length - 1);
             response.send(globalThis.chain[index]);
