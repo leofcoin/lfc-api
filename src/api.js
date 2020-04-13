@@ -58,6 +58,7 @@ export default class LeofcoinApi extends DiscoBus {
         } else {
           globalThis.accountStore = new LeofcoinStorage('lfc-account')
           globalThis.configStore = new LeofcoinStorage('lfc-config')
+          globalThis.chainStore = new LeofcoinStorage('lfc-chain')
           const account = await accountStore.get()
           
           config = await configStore.get()
