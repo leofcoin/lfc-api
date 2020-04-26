@@ -208,7 +208,7 @@ export default class LeofcoinApi extends DiscoBus {
   async start(config = {}, bootstrap, discoStrap) {
     // TODO: encrypt config
     try {
-      if (!https && !globalThis.window) {
+      if (!https && !globalThis.window || /electron/i.test(navigator.userAgent)) {
         if (bootstrap === 'star') discoStrap = [];
         else discoStrap = [
           { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
