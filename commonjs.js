@@ -287,6 +287,11 @@ class LeofcoinApi extends DiscoBus {
         }
       },
       libp2p: {
+        connectionManager: {
+          minPeers: 25,
+          maxPeers: 100,
+          pollInterval: 5000
+        },
         switch: {
           maxParallelDials: 10
         },
@@ -294,18 +299,29 @@ class LeofcoinApi extends DiscoBus {
           dht: DHT
         },
         config: {
+          relay: {
+            enabled: true,
+            hop: {
+              enabled: true,
+              active: true
+            }
+          },
           dht: {
             kBucketSize: 20,
             enabled: true,
             randomWalk: {
               enabled: true,            // Allows to disable discovery (enabled by default)
-              interval: 300e3,
-              timeout: 10e3
+              interval: 10e3,
+              timeout: 2e3
             }
+          },
+          pubsub: {
+            enabled: true
           },
           webRTCStar: {
             enabled: true
           },
+          
           peerDiscovery: {
             autoDial: false,
             websocketStar: {
