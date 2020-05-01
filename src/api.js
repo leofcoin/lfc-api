@@ -166,7 +166,7 @@ export default class LeofcoinApi extends DiscoBus {
         Bootstrap: bootstrap,
         Discovery: {
           MDNS: {
-            Enabled: !globalThis.navigator,
+            Enabled: Boolean(!globalThis.navigator || /electron/i.test(navigator.userAgent)),
             Interval: 1000
           },
           webRTCStar: {
