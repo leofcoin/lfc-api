@@ -37,8 +37,8 @@ require('ipld-lfc-tx');
 var DiscoServer = _interopDefault(require('disco-server'));
 var SocketClient = _interopDefault(require('socket-request-client'));
 var DHT = _interopDefault(require('libp2p-kad-dht'));
-var PeerInfo = _interopDefault(require('peer-info'));
-var PeerId = _interopDefault(require('peer-id'));
+require('peer-info');
+require('peer-id');
 
 const DEFAULT_QR_OPTIONS = {
   scale: 5,
@@ -425,11 +425,11 @@ class LeofcoinApi extends DiscoBus {
           this.client.pubsub.publish('peernet:join', this.peerId);
           this.client.pubsub.subscribe('peernet:join', async peer => {
             console.log(peer + ' joined');
-            const peerInfo = await new PeerInfo(peer);
-            peerInfo.multiaddrs.add('/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit');
-            peerInfo.protocols.add('/ipfs/kad/1.0.0');
-            this.ipfs.libp2p.emit('peer:discover', peerInfo);
-            if (peerInfo.id !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peerInfo.id}`);
+            // const peerInfo = await new PeerInfo(peer)
+            // peerInfo.multiaddrs.add('/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit')
+            // peerInfo.protocols.add('/ipfs/kad/1.0.0')
+            //this.ipfs.libp2p.emit('peer:discover', peerInfo)
+            // if (peerInfo.id !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peerInfo.id}`)
           });
           this.client.pubsub.subscribe('peernet:message', msg => console.log(msg));
           if (!address) address = this.peerId;
@@ -455,36 +455,36 @@ class LeofcoinApi extends DiscoBus {
           console.error(e);
         }
       }
-      
-      this.ipfs.libp2p.on('peer:discover', peerInfo => {
-        console.log(`${peerInfo.id} discovered`);
-        const peerId = PeerId.createFromB58String(peerInfo.id);
-        console.log(peerId.toString());
-        if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String();
-        if (this.peerMap.get(peerId.toString())) return
-        this.peerMap.set(peerId.toString(), {connected: false, discoPeer: false});
-        
-        
-      });
-      this.ipfs.libp2p.on('peer:connect', peerInfo => {
-        console.log(`${peerInfo.id} connected`);
-        
-        if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String();
-        let info = this.peerMap.get(peerInfo.id);
-        if (!info) info = { discoPeer: false };
-        info.connected = true;
-        this.peerMap.set(peerInfo.id, info);
-      });
-      this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
-        console.log(peerInfo);
-        if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String();
-        const info = this.peerMap.get(peerInfo.id);
-        if (info && info.discoPeer) {
-          this.peerMap.get(peerInfo.id, info);
-          info.connected = false;
-        }
-        else this.peerMap.delete(peerInfo.id);
-      });
+      // 
+      // this.ipfs.libp2p.on('peer:discover', peerInfo => {
+      //   console.log(`${peerInfo.id} discovered`);
+      //   const peerId = PeerId.createFromB58String(peerInfo.id)
+      //   console.log(peerId.toString());
+      //   if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String()
+      //   if (this.peerMap.get(peerId.toString())) return
+      //   this.peerMap.set(peerId.toString(), {connected: false, discoPeer: false})
+      // 
+      // 
+      // })
+      // this.ipfs.libp2p.on('peer:connect', peerInfo => {
+      //   console.log(`${peerInfo.id} connected`);
+      // 
+      //   if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String()
+      //   let info = this.peerMap.get(peerInfo.id)
+      //   if (!info) info = { discoPeer: false }
+      //   info.connected = true
+      //   this.peerMap.set(peerInfo.id, info)
+      // })
+      // this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
+      //   console.log(peerInfo);
+      //   if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String()
+      //   const info = this.peerMap.get(peerInfo.id)
+      //   if (info && info.discoPeer) {
+      //     this.peerMap.get(peerInfo.id, info)
+      //     info.connected = false
+      //   }
+      //   else this.peerMap.delete(peerInfo.id)
+      // })
     } catch (e) {
       console.error(e);
     }
