@@ -12,7 +12,7 @@ try {
   execSync('rm browser.js.tmp-browserify-*')
 } catch (e) {
 }
-execSync('cp node_modules/lfc-storage/src/level.js src/lib/level.js')
+execSync('cp node_modules/@leofcoin/storage/src/level.js src/lib/level.js')
 execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
 // execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
 execSync('cp node_modules/qr-scanner/qr-scanner-worker.min.js qr-scanner-worker.js')
