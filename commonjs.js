@@ -172,8 +172,6 @@ const https = (() => {
 class LeofcoinApi extends DiscoBus {
   constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false }) {
     super();
-    this.peerMap = new Map();
-    this.discoClientMap = new Map();
     this.account = account;
     if (options.init) return this._init(options)
   }
