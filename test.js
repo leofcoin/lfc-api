@@ -89,6 +89,7 @@ try {
       console.log(await mm.ipfs.swarm.peers());
     }
   }
+  
 } catch (e) {
   console.log(e);
 }
