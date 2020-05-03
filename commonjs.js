@@ -32,13 +32,7 @@ var QRCode = _interopDefault(require('qrcode'));
 var path = require('path');
 var DiscoBus = _interopDefault(require('@leofcoin/disco-bus'));
 var multicodec = _interopDefault(require('multicodec'));
-require('ipld-lfc');
-require('ipld-lfc-tx');
-var DiscoServer = _interopDefault(require('disco-server'));
-var SocketClient = _interopDefault(require('socket-request-client'));
 var DHT = _interopDefault(require('libp2p-kad-dht'));
-require('peer-info');
-require('peer-id');
 
 const DEFAULT_QR_OPTIONS = {
   scale: 5,
@@ -91,6 +85,7 @@ const generateProfile = async () => {
   const external = account.external(0);
   return {
     mnemonic,
+    multiWIF: wallet.export(),
     publicKey: external.publicKey,
     privateKey: external.privateKey,
     walletId: external.id
@@ -166,6 +161,8 @@ var account = {
   exportAccount  
 };
 
+globalThis.leofcoin = globalThis.leofcoin || {};
+
 let hasDaemon = false;
 const https = (() => {
   if (!globalThis.location) return false;
@@ -194,10 +191,10 @@ class LeofcoinApi extends DiscoBus {
   
   async _init({start, bootstrap, forceJS}) {
     hasDaemon = await this.hasDaemon();
-    let config;
+    let wallet;
     if (hasDaemon && !https && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config');
-      config = await response.json();
+      wallet = await response.json();
       const IpfsHttpClient = require('ipfs-http-client');
       globalThis.IpfsHttpClient = IpfsHttpClient;
       const { globSource } = IpfsHttpClient;
@@ -219,26 +216,40 @@ class LeofcoinApi extends DiscoBus {
     });
         
         if (hasDaemon && !https) {
-          config = await response.json();  
+          wallet = await response.json();  
         } else {
           globalThis.accountStore = new LeofcoinStorage('lfc-account');
-          globalThis.configStore = new LeofcoinStorage('lfc-config');
           globalThis.chainStore = new LeofcoinStorage('lfc-chain');
+          globalThis.walletStore = new LeofcoinStorage('lfc-wallet');
           const account = await accountStore.get();
-          
-          config = await configStore.get();
-          if (!config.identity) {
-            await configStore.put(config);
-            config.identity = await this.account.generateProfile();
-            await accountStore.put({ public: { walletId: config.identity.walletId }});
-            await configStore.put(config);
-          }  
+          wallet = await walletStore.get();
+          if (!wallet.identity) {
+            wallet.identity = await this.account.generateProfile();
+            walletStore.put(wallet);
+            await accountStore.put({ public: { walletId: wallet.identity.walletId }});
+          }
         }
-        await this.spawnJsNode(config, bootstrap);
+        await this.spawnJsNode(wallet, bootstrap);
       }      
     }
-    if (start) await this.start(config, bootstrap);
-    return this;
+    this.api = {
+      addFromFs: async (path, recursive = true) => {
+        if (!globalThis.globSource) {
+          const IpfsHttpClient = require('ipfs-http-client');
+      globalThis.IpfsHttpClient = IpfsHttpClient;
+      const { globSource } = IpfsHttpClient;
+      globalThis.globSource = globSource;
+        }
+        console.log(globSource(path, { recursive }));
+        const files = [];
+        for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
+          files.push(file);
+        }
+        return files;
+      }
+    };
+    // await globalApi(this)
+    return this
   }
   
   async spawnJsNode (config, bootstrap) {    
@@ -271,10 +282,9 @@ class LeofcoinApi extends DiscoBus {
     ];
     else if (bootstrap === 'star') bootstrap = [];
     
-    console.log(config.identity);
     config = {
       pass: config.identity.privateKey,
-      repo: configStore.root,
+      repo: walletStore.root,
       ipld: {
         async loadFormat (codec) {
           if (codec === multicodec.LEOFCOIN_BLOCK) {
@@ -288,7 +298,7 @@ class LeofcoinApi extends DiscoBus {
       },
       libp2p: {
         connectionManager: {
-          minPeers: 25,
+          minPeers: 5,
           maxPeers: 100,
           pollInterval: 5000
         },
@@ -323,7 +333,7 @@ class LeofcoinApi extends DiscoBus {
           },
           
           peerDiscovery: {
-            autoDial: false,
+            autoDial: true,
             websocketStar: {
               enabled: true
             }
@@ -382,131 +392,8 @@ class LeofcoinApi extends DiscoBus {
     } catch (e) {
       console.error(e);
     }
-  }
-  
-  /**
-   * spinup node
-   * @param {object} config
-   * @return {object} {addresses, id, ipfs}
-   */
-  async start(config = {}, bootstrap, discoStrap) {
-    // TODO: encrypt config
-    try {
-      if (!https && !globalThis.window || /electron/i.test(navigator.userAgent)) {
-        if (bootstrap === 'star') discoStrap = [];
-        else discoStrap = [
-          { address: 'wss://star.leofcoin.org/disco', protocols: 'disco' }
-        ];
-        this.discoServer = await new DiscoServer({
-          peerId: this.peerId,
-          ipfs: this.ipfs,
-          port: 4455,
-          protocol: 'disco',
-          bootstrap: discoStrap
-        }, {
-          chainHeight: (response) => response.send(globalThis.chain.length),
-          chainIndex: (response) => response.send(globalThis.chain.length - 1),
-          blockHash: (params, response) => {
-            if (!response) {
-              response = params;
-              params = 0;
-            }
-            response.send(globalThis.chain[params].hash);
-          },
-          lastBlock: response => {
-            const index = (globalThis.chain.length - 1);
-            response.send(globalThis.chain[index]);
-          } 
-        });
-      } else {
-        try {
-          this.client = await SocketClient('wss://star.leofcoin.org/disco', 'disco');
-          let address = this.addresses[this.addresses.length - 1];
-          this.client.pubsub.publish('peernet:join', this.peerId);
-          this.client.pubsub.subscribe('peernet:join', async peer => {
-            console.log(peer + ' joined');
-            // const peerInfo = await new PeerInfo(peer)
-            // peerInfo.multiaddrs.add('/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit')
-            // peerInfo.protocols.add('/ipfs/kad/1.0.0')
-            //this.ipfs.libp2p.emit('peer:discover', peerInfo)
-            // if (peerInfo.id !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peerInfo.id}`)
-          });
-          this.client.pubsub.subscribe('peernet:message', msg => console.log(msg));
-          if (!address) address = this.peerId;
-          console.log(address);
-          // const peers = await client.peernet.join({
-          //   address,
-          //   peerId: this.peerId
-          // })
-          // for (const peer of peers) {
-          //   if (peer) try {
-          //     const peerInfo = await new PeerInfo(peer)
-          //     peerInfo.multiaddrs.add('/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit')
-          //     peerInfo.protocols.add('/ipfs/kad/1.0.0')
-          //     this.ipfs.libp2p.emit('peer:discover', peerInfo)
-          //     if (peer !== this.peerId) await this.ipfs.swarm.connect(`/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs/p2p-circuit/p2p/${peer}`)
-          // 
-          //   } catch (e) {
-          //     console.warn(e);
-          //   }
-          // }
-          this.discoClientMap.set('star.leofcoin.org', this.client);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      // 
-      // this.ipfs.libp2p.on('peer:discover', peerInfo => {
-      //   console.log(`${peerInfo.id} discovered`);
-      //   const peerId = PeerId.createFromB58String(peerInfo.id)
-      //   console.log(peerId.toString());
-      //   if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String()
-      //   if (this.peerMap.get(peerId.toString())) return
-      //   this.peerMap.set(peerId.toString(), {connected: false, discoPeer: false})
-      // 
-      // 
-      // })
-      // this.ipfs.libp2p.on('peer:connect', peerInfo => {
-      //   console.log(`${peerInfo.id} connected`);
-      // 
-      //   if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String()
-      //   let info = this.peerMap.get(peerInfo.id)
-      //   if (!info) info = { discoPeer: false }
-      //   info.connected = true
-      //   this.peerMap.set(peerInfo.id, info)
-      // })
-      // this.ipfs.libp2p.on('peer:disconnect', peerInfo => {
-      //   console.log(peerInfo);
-      //   if (typeof peerInfo.id !== 'string') peerInfo.id = peerInfo.id.toB58String()
-      //   const info = this.peerMap.get(peerInfo.id)
-      //   if (info && info.discoPeer) {
-      //     this.peerMap.get(peerInfo.id, info)
-      //     info.connected = false
-      //   }
-      //   else this.peerMap.delete(peerInfo.id)
-      // })
-    } catch (e) {
-      console.error(e);
-    }
-
-    this.api = {
-      addFromFs: async (path, recursive = true) => {
-        if (!globalThis.globSource) {
-          const IpfsHttpClient = require('ipfs-http-client');
-      globalThis.IpfsHttpClient = IpfsHttpClient;
-      const { globSource } = IpfsHttpClient;
-      globalThis.globSource = globSource;
-        }
-        console.log(globSource(path, { recursive }));
-        const files = [];
-        for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
-          files.push(file);
-        }
-        return files;
-      }
-    };
-    // await globalApi(this)
-    return this
+    
+    
   }
   
   

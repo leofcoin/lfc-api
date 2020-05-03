@@ -29,6 +29,7 @@ const generateProfile = async () => {
   const external = account.external(0)
   return {
     mnemonic,
+    multiWIF: wallet.export(),
     publicKey: external.publicKey,
     privateKey: external.privateKey,
     walletId: external.id
