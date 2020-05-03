@@ -91,14 +91,15 @@ export default class LeofcoinApi extends DiscoBus {
           '/ip4/0.0.0.0/tcp/4020',
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
-        API: '/ip4/127.0.0.1/tcp/5555'
+        API: '/ip4/127.0.0.1/tcp/5555',
+        Delegates: ['node0.preload.ipfs.io']
       }
       } else {
         config.Addresses = {
           Swarm: [],
           API: '',
           Gateway: '',
-          Delegates: []        
+          Delegates: ['node0.preload.ipfs.io']        
         }
       }
       
@@ -131,6 +132,12 @@ export default class LeofcoinApi extends DiscoBus {
           maxParallelDials: 10
         },
         modules: {
+          // contentRouting: [
+          //   new DelegatedContentRouter(peerInfo.id, delegatedApiOptions)
+          // ],
+          // peerRouting: [
+          //   new DelegatedPeerRouter(delegatedApiOptions)
+          // ],
           dht: DHT
         },
         config: {

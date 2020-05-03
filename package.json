@@ -41,6 +41,8 @@
     "ipld-lfc": "^0.1.4",
     "ipld-lfc-tx": "^0.3.1",
     "libp2p": "^0.27.7",
+    "libp2p-delegated-content-routing": "^0.4.5",
+    "libp2p-delegated-peer-routing": "^0.4.3",
     "libp2p-kad-dht": "^0.18.7",
     "little-pubsub": "^1.1.0",
     "multi-wallet": "^1.2.6",
