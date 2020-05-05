@@ -260,7 +260,7 @@ class LeofcoinApi extends DiscoBus {
         config.Addresses = {
       
         Swarm: [
-          '/ip4/0.0.0.0/tcp/4030/ws',
+          // '/ip4/0.0.0.0/tcp/4030/ws',
           '/ip4/0.0.0.0/tcp/4020',
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
