@@ -209,7 +209,7 @@ class LeofcoinApi extends DiscoBus {
         this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
       } else {
         await new Promise((resolve, reject) => {
-      if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
+      if (!LeofcoinStorage) LeofcoinStorage = require('@leofcoin/storage');
       resolve();
     });
         

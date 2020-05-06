@@ -110,7 +110,7 @@ export default [{
       DAEMON_IMPORT: `const { run } = require('@leofcoin/daemon');
       await run()`,
     STORAGE_IMPORT: `new Promise((resolve, reject) => {
-      if (!LeofcoinStorage) LeofcoinStorage = require('lfc-storage');
+      if (!LeofcoinStorage) LeofcoinStorage = require('@leofcoin/storage');
       resolve()
     });`,
       QRCODE_IMPORT: `if (!QRCode) QRCode = require('qrcode');`,
