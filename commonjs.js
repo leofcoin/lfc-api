@@ -170,7 +170,7 @@ const https = (() => {
 })();
 
 class LeofcoinApi extends DiscoBus {
-  constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false }) {
+  constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false, star: false }) {
     super();
     this.account = account;
     if (options.init) return this._init(options)
@@ -187,7 +187,7 @@ class LeofcoinApi extends DiscoBus {
     }
   }
   
-  async _init({start, bootstrap, forceJS}) {
+  async _init({start, bootstrap, forceJS, star}) {
     hasDaemon = await this.hasDaemon();
     let wallet;
     if (hasDaemon && !https && !forceJS) {
@@ -250,7 +250,7 @@ class LeofcoinApi extends DiscoBus {
     return this
   }
   
-  async spawnJsNode (config, bootstrap) {    
+  async spawnJsNode (config, bootstrap, star) {    
     await new Promise((resolve, reject) => {
         if (!Ipfs) Ipfs = require('ipfs');
         resolve();
@@ -259,14 +259,15 @@ class LeofcoinApi extends DiscoBus {
       if (!https && !globalThis.window) {
         config.Addresses = {
       
-        Swarm: [
-          // '/ip4/0.0.0.0/tcp/4030/ws',
-          '/ip4/0.0.0.0/tcp/4020',
+        Swarm: [          
+          '/ip4/0.0.0.0/tcp/4020'
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
         API: '/ip4/127.0.0.1/tcp/5555',
         Delegates: ['node0.preload.ipfs.io']
+        
       };
+      if (star) config.Addresses.Swarm.push('/ip4/0.0.0.0/tcp/4030/ws');
       } else {
         config.Addresses = {
           Swarm: [],
@@ -277,7 +278,8 @@ class LeofcoinApi extends DiscoBus {
       }
       
     if (bootstrap === 'lfc') bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmamkpYGT25cCDYzD3JkQq7x9qBtdDWh4gfi8fCopiXXfs'
+      '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL',
+      '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
     ];
     else if (bootstrap === 'star') bootstrap = [];
     
@@ -287,9 +289,9 @@ class LeofcoinApi extends DiscoBus {
       ipld: {
         async loadFormat (codec) {
           if (codec === multicodec.LEOFCOIN_BLOCK) {
-            return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc'))); })
+            return Promise.resolve().then(function () { return _interopNamespace(require('ipld-lfc')); })
           } else if (codec === multicodec.LEOFCOIN_TX) {
-            return new Promise(function (resolve) { resolve(_interopNamespace(require('ipld-lfc-tx'))); })
+            return Promise.resolve().then(function () { return _interopNamespace(require('ipld-lfc-tx')); })
           } else {
             throw new Error('unable to load format ' + multicodec.print[codec])
           }
@@ -390,10 +392,10 @@ class LeofcoinApi extends DiscoBus {
       this.peerId = id;
       this.publicKey = publicKey;
       
-      const strap = await this.ipfs.config.get('Bootstrap');
-      for (const addr of strap) {
-        await this.ipfs.swarm.connect(addr);
-      }
+      // const strap = await this.ipfs.config.get('Bootstrap')
+      // for (const addr of strap) {
+      //   await this.ipfs.swarm.connect(addr)
+      // }
     } catch (e) {
       console.error(e);
     }
