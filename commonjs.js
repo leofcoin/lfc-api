@@ -162,8 +162,6 @@ var account = {
 };
 
 globalThis.leofcoin = globalThis.leofcoin || {};
-
-let hasDaemon = false;
 const https = (() => {
   if (!globalThis.location) return false;
   return Boolean(globalThis.location.protocol === 'https:')
@@ -187,10 +185,26 @@ class LeofcoinApi extends DiscoBus {
     }
   }
   
-  async _init({start, bootstrap, forceJS, star}) {
-    hasDaemon = await this.hasDaemon();
-    let wallet;
-    if (hasDaemon && !https && !forceJS) {
+  async environment() {
+    const _navigator = globalThis.navigator;
+    if (_navigator && /electron/i.test(_navigator.userAgent) || !_navigator) {
+      return 'node'
+    } else {
+      return 'browser'
+    }
+  }
+  
+  async target() {
+    let daemon = false;
+    const environment = this.environment();
+    if (!https) daemon = await this.hasDaemon();
+    
+    return { daemon, environment }
+  }
+  
+  async _spawn(config = {}, forceJS = false, wallet = {}) {
+    if (!config.target) config.target = await this.target();
+    if (config.target.daemon && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config');
       wallet = await response.json();
       const IpfsHttpClient = require('ipfs-http-client');
@@ -198,38 +212,38 @@ class LeofcoinApi extends DiscoBus {
       const { globSource } = IpfsHttpClient;
       globalThis.globSource = globSource; 
       this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
-    } else {
-      if (!https && !globalThis.navigator && !forceJS) {
-        const { run } = require('@leofcoin/daemon');
+      return
+    } else if (config.target.environment === 'node' && !forceJS){
+      const { run } = require('@leofcoin/daemon');
       await run();
-        const IpfsHttpClient = require('ipfs-http-client');
+      const IpfsHttpClient = require('ipfs-http-client');
       globalThis.IpfsHttpClient = IpfsHttpClient;
       const { globSource } = IpfsHttpClient;
       globalThis.globSource = globSource;
-        this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
-      } else {
-        await new Promise((resolve, reject) => {
+      this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');  
+      return
+    } else {
+      await new Promise((resolve, reject) => {
       if (!LeofcoinStorage) LeofcoinStorage = require('@leofcoin/storage');
       resolve();
     });
-        
-        if (hasDaemon && !https) {
-          wallet = await response.json();  
-        } else {
-          globalThis.accountStore = new LeofcoinStorage('lfc-account');
-          globalThis.chainStore = new LeofcoinStorage('lfc-chain');
-          globalThis.walletStore = new LeofcoinStorage('lfc-wallet');
-          const account = await accountStore.get();
-          wallet = await walletStore.get();
-          if (!wallet.identity) {
-            wallet.identity = await this.account.generateProfile();
-            walletStore.put(wallet);
-            await accountStore.put({ public: { walletId: wallet.identity.walletId }});
-          }
-        }
-        await this.spawnJsNode(wallet, bootstrap);
-      }      
+      globalThis.accountStore = new LeofcoinStorage('lfc-account');
+      globalThis.chainStore = new LeofcoinStorage('lfc-chain');
+      globalThis.walletStore = new LeofcoinStorage('lfc-wallet');
+      const account = await accountStore.get();
+      wallet = await walletStore.get();
+      if (!wallet.identity) {
+        wallet.identity = await this.account.generateProfile();
+        walletStore.put(wallet);
+        await accountStore.put({ public: { walletId: wallet.identity.walletId }});
+      }
+      return await this.spawnJsNode(wallet, config.bootstrap, config.star)
     }
+  }
+  
+  async _init({start, bootstrap, forceJS, star}) {
+    await this._spawn({bootstrap, star}, forceJS);
+    
     this.api = {
       addFromFs: async (path, recursive = true) => {
         if (!globalThis.globSource) {
