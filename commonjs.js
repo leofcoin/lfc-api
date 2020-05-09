@@ -273,8 +273,9 @@ class LeofcoinApi extends DiscoBus {
       if (!https && !globalThis.window) {
         config.Addresses = {
       
-        Swarm: [          
-          '/ip4/0.0.0.0/tcp/4020'
+        Swarm: [
+          '/ip6/::/tcp/4020',
+          '/ip4/0.0.0.0/tcp/4020',
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
         API: '/ip4/127.0.0.1/tcp/5555',
@@ -291,11 +292,18 @@ class LeofcoinApi extends DiscoBus {
         };
       }
       
-    if (bootstrap === 'lfc') bootstrap = [
-      '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL',
-      '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
-    ];
-    else if (bootstrap === 'star') bootstrap = [];
+    if (bootstrap === 'lfc') {
+      if (https) {
+        bootstrap = [
+         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+       ];  
+      } else {
+        bootstrap = [
+         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+       ];
+     }
+      
+    } else if (star) bootstrap = [];
     
     config = {
       pass: config.identity.privateKey,
@@ -354,7 +362,7 @@ class LeofcoinApi extends DiscoBus {
           },
           
           peerDiscovery: {
-            autoDial: true,
+            autoDial: false,
             websocketStar: {
               enabled: true
             }
@@ -394,7 +402,7 @@ class LeofcoinApi extends DiscoBus {
       },
       relay: {
         enabled: true,
-        hop: { enabled: true, active: true }
+        hop: { enabled: true }
       },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     };
@@ -406,10 +414,10 @@ class LeofcoinApi extends DiscoBus {
       this.peerId = id;
       this.publicKey = publicKey;
       
-      // const strap = await this.ipfs.config.get('Bootstrap')
-      // for (const addr of strap) {
-      //   await this.ipfs.swarm.connect(addr)
-      // }
+      const strap = await this.ipfs.config.get('Bootstrap');
+      for (const addr of strap) {
+        await this.ipfs.swarm.connect(addr);
+      }
     } catch (e) {
       console.error(e);
     }
