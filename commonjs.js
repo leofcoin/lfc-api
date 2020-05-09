@@ -275,7 +275,7 @@ class LeofcoinApi extends DiscoBus {
       
         Swarm: [
           '/ip6/::/tcp/4020',
-          '/ip4/0.0.0.0/tcp/4020',
+          '/ip4/0.0.0.0/tcp/4010',
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
         API: '/ip4/127.0.0.1/tcp/5555',
