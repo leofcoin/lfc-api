@@ -22,17 +22,41 @@ const generateProfileQR = async (profile = {}, options = {}) => {
 }
 //
 
+/**
+ * @return {object} { identity, accounts, config }
+ */
 const generateProfile = async () => {
   const wallet = new MultiWallet('leofcoin:olivia');
+  /**
+   * @type {string}
+   */
   const mnemonic = wallet.generate();
+  /**
+   * @type {object}
+   */
   const account = wallet.account(0)
+  /**
+   * @type {object}
+   */
   const external = account.external(0)
+  
   return {
-    mnemonic,
-    multiWIF: wallet.export(),
-    publicKey: external.publicKey,
-    privateKey: external.privateKey,
-    walletId: external.id
+    identity: {
+      mnemonic,
+      multiWIF: wallet.export(),
+      publicKey: external.publicKey,
+      privateKey: external.privateKey,
+      walletId: external.id
+    },
+    accounts: ['main account', external.address],
+    config: {
+      miner: {
+        intensity: 1,
+        address: external.address,
+        donationAddress: undefined,
+        donationAmount: 1 //percent
+      }
+     }
   }
 }
 

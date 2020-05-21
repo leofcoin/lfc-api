@@ -68,9 +68,12 @@ export default class LeofcoinApi extends DiscoBus {
       const account = await accountStore.get()
       wallet = await walletStore.get()
       if (!wallet.identity) {
-        wallet.identity = await this.account.generateProfile()
+        const { identity, accounts, config } = await this.account.generateProfile()
+        wallet.identity = identity
+        wallet.accounts = accounts
         walletStore.put(wallet)
-        await accountStore.put({ public: { walletId: wallet.identity.walletId }});
+        await accountStore.put('config', config);
+        await accountStore.put('public', { walletId: wallet.identity.walletId });
       }
       return await this.spawnJsNode(wallet, config.bootstrap, config.star)
     }
@@ -105,13 +108,14 @@ export default class LeofcoinApi extends DiscoBus {
         Swarm: [
           '/ip6/::/tcp/4020',
           '/ip4/0.0.0.0/tcp/4010',
+          '/ip4/0.0.0.0/tcp/4030/ws'
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
         API: '/ip4/127.0.0.1/tcp/5555',
         Delegates: ['node0.preload.ipfs.io']
         
       }
-      if (star) config.Addresses.Swarm.push('/ip4/0.0.0.0/tcp/4030/ws');
+      // if (star) config.Addresses.Swarm.push('/ip4/0.0.0.0/tcp/4030/ws');
       } else {
         config.Addresses = {
           Swarm: [],
@@ -126,10 +130,14 @@ export default class LeofcoinApi extends DiscoBus {
         bootstrap = [
          '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
        ]  
-      } else {
+     } else if (globalThis.window && !/electron/i.test(navigator.userAgent)){
         bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+         '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
        ];
+     } else {
+       bootstrap = [
+        '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+      ];
      }
       
     } else if (star) bootstrap = [];
@@ -164,7 +172,7 @@ export default class LeofcoinApi extends DiscoBus {
           // peerRouting: [
           //   new DelegatedPeerRouter(delegatedApiOptions)
           // ],
-          dht: DHT
+          // dht: DHT
         },
         config: {
           relay: {
