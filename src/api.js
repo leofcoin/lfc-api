@@ -13,9 +13,10 @@ const https = (() => {
 })();
 
 export default class LeofcoinApi extends DiscoBus {
-  constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false, star: false }) {
+  constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false, star: false, network: 'leofcoin' }) {
     super()
     this.account = account
+    this.network = options.network || 'leofcoin'
     if (options.init) return this._init(options)
   }
   
@@ -62,9 +63,9 @@ export default class LeofcoinApi extends DiscoBus {
       return
     } else {
       await STORAGE_IMPORT
-      globalThis.accountStore = new LeofcoinStorage('lfc-account')
-      globalThis.chainStore = new LeofcoinStorage('lfc-chain')
-      globalThis.walletStore = new LeofcoinStorage('lfc-wallet')
+      globalThis.accountStore = new LeofcoinStorage('lfc-account', `.leofcoin/${this.network}`)
+      globalThis.chainStore = new LeofcoinStorage('lfc-chain', `.leofcoin/${this.network}`)
+      globalThis.walletStore = new LeofcoinStorage('lfc-wallet', `.leofcoin/${this.network}`)
       const account = await accountStore.get()
       wallet = await walletStore.get()
       if (!wallet.identity) {
