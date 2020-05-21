@@ -1,4 +1,4 @@
-import account from './api/account'
+import Account from './api/account'
 import DiscoBus from '@leofcoin/disco-bus';
 import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
@@ -15,8 +15,9 @@ const https = (() => {
 export default class LeofcoinApi extends DiscoBus {
   constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false, star: false, network: 'leofcoin' }) {
     super()
-    this.account = account
     this.network = options.network || 'leofcoin'
+    
+    this.account = new Account(this.network)
     if (options.init) return this._init(options)
   }
   
