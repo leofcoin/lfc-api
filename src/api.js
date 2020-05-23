@@ -3,6 +3,7 @@ import DiscoBus from '@leofcoin/disco-bus';
 import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
 import DHT from 'libp2p-kad-dht';
+import MultiWallet from '@leofcoin/multi-wallet'
 
 globalThis.leofcoin = globalThis.leofcoin || {}
 
@@ -77,6 +78,9 @@ export default class LeofcoinApi extends DiscoBus {
         await accountStore.put('config', config);
         await accountStore.put('public', { walletId: wallet.identity.walletId });
       }
+      const multiWallet = new MultiWallet(this.network)
+      multiWallet.import(wallet.identity.multiWIF)
+      globalThis.leofcoin.wallet = multiWallet
       return await this.spawnJsNode(wallet, config.bootstrap, config.star)
     }
   }

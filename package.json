@@ -33,6 +33,7 @@
   "dependencies": {
     "@leofcoin/daemon": "^1.0.15",
     "@leofcoin/disco-bus": "^1.0.4",
+    "@leofcoin/multi-wallet": "^2.0.0",
     "@leofcoin/storage": "^2.0.0",
     "base32": "0.0.6",
     "base58": "^2.0.1",
@@ -45,7 +46,6 @@
     "libp2p-delegated-peer-routing": "^0.4.3",
     "libp2p-kad-dht": "^0.18.7",
     "little-pubsub": "^1.1.0",
-    "multi-wallet": "^1.2.6",
     "node-fetch": "^2.6.0",
     "peer-id": "^0.13.12",
     "qr-scanner": "^1.1.1",
