@@ -328,15 +328,15 @@ class LeofcoinApi extends DiscoBus {
     if (bootstrap === 'lfc') {
       if (https) {
         bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
        ];  
      } else if (globalThis.window && !/electron/i.test(navigator.userAgent)){
         bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+         '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
        ];
      } else {
        bootstrap = [
-        '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbRqQkqqXbEH9y4jMg1XywAcwJCk4U8ZVaYZtjHdXKhpL'
+        '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
       ];
      }
       
