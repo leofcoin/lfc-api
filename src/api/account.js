@@ -1,4 +1,4 @@
-import MultiWallet from 'multi-wallet';
+import MultiWallet from '@leofcoin/multi-wallet';
 import { DEFAULT_QR_OPTIONS } from './../constants.js';
 import { expected } from './../utils.js';
 import AES from 'crypto-js/aes.js';
@@ -35,7 +35,7 @@ export default class LFCAccount {
     /**
      * @type {string}
      */
-    const mnemonic = wallet.generate();
+    const mnemonic = await wallet.generate();
     /**
      * @type {object}
      */
@@ -44,6 +44,7 @@ export default class LFCAccount {
      * @type {object}
      */
     const external = account.external(0)
+    const internal = account.internal(0)
     
     return {
       identity: {
@@ -53,7 +54,7 @@ export default class LFCAccount {
         privateKey: external.privateKey,
         walletId: external.id
       },
-      accounts: ['main account', external.address],
+      accounts: ['main account', external.address, internal.address],
       config: {
         miner: {
           intensity: 1,
@@ -75,7 +76,7 @@ export default class LFCAccount {
       identity = JSON.parse(identity.toString(ENC))
       if (identity.mnemonic) {
         const wallet = new MultiWallet(this.network);
-        wallet.recover(identity.mnemonic)
+        await wallet.recover(identity.mnemonic)
         const account = wallet.account(0)
         const external = account.external(0)
         identity = {

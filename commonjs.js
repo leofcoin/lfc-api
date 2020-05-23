@@ -24,7 +24,7 @@ function _interopNamespace(e) {
   }
 }
 
-var MultiWallet = _interopDefault(require('multi-wallet'));
+var MultiWallet = _interopDefault(require('@leofcoin/multi-wallet'));
 require('node-fetch');
 var AES = _interopDefault(require('crypto-js/aes.js'));
 var ENC = _interopDefault(require('crypto-js/enc-utf8.js'));
@@ -91,7 +91,7 @@ class LFCAccount {
     /**
      * @type {string}
      */
-    const mnemonic = wallet.generate();
+    const mnemonic = await wallet.generate();
     /**
      * @type {object}
      */
@@ -100,6 +100,7 @@ class LFCAccount {
      * @type {object}
      */
     const external = account.external(0);
+    const internal = account.internal(0);
     
     return {
       identity: {
@@ -109,7 +110,7 @@ class LFCAccount {
         privateKey: external.privateKey,
         walletId: external.id
       },
-      accounts: ['main account', external.address],
+      accounts: ['main account', external.address, internal.address],
       config: {
         miner: {
           intensity: 1,
@@ -131,7 +132,7 @@ class LFCAccount {
       identity = JSON.parse(identity.toString(ENC));
       if (identity.mnemonic) {
         const wallet = new MultiWallet(this.network);
-        wallet.recover(identity.mnemonic);
+        await wallet.recover(identity.mnemonic);
         const account = wallet.account(0);
         const external = account.external(0);
         identity = {
@@ -265,6 +266,9 @@ class LeofcoinApi extends DiscoBus {
         await accountStore.put('config', config);
         await accountStore.put('public', { walletId: wallet.identity.walletId });
       }
+      const multiWallet = new MultiWallet(this.network);
+      multiWallet.import(wallet.identity.multiWIF);
+      globalThis.leofcoin.wallet = multiWallet;
       return await this.spawnJsNode(wallet, config.bootstrap, config.star)
     }
   }

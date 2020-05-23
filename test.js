@@ -15,7 +15,7 @@ const {codes, privateKey, mnemonic } = {
 (async () => {
 try {
   const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: true, star: false}, 'lfc')
-  console.log(mm.ipfs);
+  
   const result = await mm.api.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
   const veldshop = await mm.api.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
   const wetalk = await mm.api.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
