@@ -9,13 +9,13 @@ const {codes, privateKey, mnemonic } = {
   privateKey: '-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCf0BORJLsjBjRo\n8+6jst5OJ/NyBM41dg+x5CzQSut7MqhA5Z7JcUPrDBQtjopFSlYiFKeTKAGr0Obd\nZD/MgqjrW9pNBxyyqDSw+sxkivC9GMGcONBz7iOQaiJSn1rpJeiInYYzO17f4phK\nI06GjjD59x8paEBDP05Qpapx3VKzNwo4zNwANUTXSDXMC+CrPeTlionbfVt0YOwC\n2/mePY8RIxoVXtKRuPGcvIAiUBdHu9bM3TohR1hFEDGDmuAndCXKC9EW2qh9pFWP\nd+lnThJQMqp2imVyAIR/m1N42PF2lTL9fMnBQ+69xIK3GtVHIablos5XW+n0TMRe\n8AzzQ3DrAgMBAAECggEAI51OTwE9hw+h7GW4H9kDu60hjp5NihJ2avFrnzujAMCI\nSHYjjcblGOOHN6PVYp2vVkb+FUhMHwsd9+aYZS4VEOZWXuYf2hysKWiq1hk0jx+O\nPg9XPQ6r9EoCviDvNJgTGybnulEX0pL/1z3JCSl09q/AzQyDjbj07foNYvSssm1O\na3ezhlGml7SkOVe9UUbQ7yA+TG3/xc+62fDcDX9XyHXvGqSoOzh9XBl2v/kzL2G0\nAMtsfYS8dey0qbd6vuj4s1HaQdVWIKeTFES1DBVBy74I6EDfrnHLz6kGBPSQeP7w\nJseFv0FXswMBk45AOdnXR7cBmOFVV1XEGlSbcZ1ksQKBgQDSgDQr6Yy3UHn8rZXt\nF6wnZpuyKMKPhPWl4iJNvjAYYTRQRy3BEhPvZvyB7ltNXdoAkOJd0ssrmfe/CRtN\nvmnLCQ5xDJZ7i3+iBXj8d9MiCgnJCIoq43GpcR2xEmYw+XycFmnib+oWTThXHd/Q\nBdDKBnFgxnruGXtD3Z3NwG8EwwKBgQDCWx2+sG486G8LxhEDJChN3AW6HcB9YICh\nFnD23085hGFKWPMOPZFm4cH575jQtFFcwT1blIYhgkB0MFnyvRxhX9smYLALiYXC\nh0hdA8XJSo/vbgE2IlkKHKgO73lMytyWc6xxF/q87n4+GTmNTr3H7vIpwEtA8Hs8\n4Sc8jEMAuQKBgALI5WfLUCxAqUx5c2lOjd17kwW5WlGRvbozEqcapAI+jvWc63MJ\nbTAWmbKSV6zfV/n38LazCjMKd2eUlELkCPxBo2pFc1wxDUA0eFRGtYlWvqhlL4a/\nuYo3T+A+0RFGy6o49a+kMWGYJe2pHIPg/9EcYrWYCppJxgKw1Nya9h0HAoGAeh9+\nxT9fRW5XuHIwZmTl3maOQrBHL4Df0lijirwur9l6uJjDwQL2xkq89CuVPi7PoRTb\nVRwyXAPYNCndmyUxHA57SdYfSGCVZ/JRigDA2wa7ApuAr19Ny4jOIPRgp9wgV3k/\ntaB3sRe6w5JeE2iS33pJN+rYXmm9RjfDy8vmniECgYAOlIBLaQhhV3WQRH0/TN7/\nPTvyz1lxuRuiUlqF6IK/Asuhf5+b3Ws9ZqG5eCYtPJprii8zjLn1leAPrC6VD5r8\n67IZI1mpcZPSQIHEOch1cJd+CBotm79hE1iHxU/h+t5UBrFqs2wP+D4Xl3qKkine\nb1FYr4BawU8V7C/mUUca9A==\n-----END PRIVATE KEY-----\n',
   mnemonic: 'alpha cousin hammer easily either beef swear search candy road rigid wool'
 };
-    
+
 // test('wetalk-api', async tape => {
   // tape.plan(2);
 (async () => {
 try {
-  const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: true, star: false}, 'lfc')
-  
+  const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: false, star: false}, 'lfc')
+  console.log(await mm.ipfs.swarm.peers())
   const result = await mm.api.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
   const veldshop = await mm.api.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
   const wetalk = await mm.api.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
@@ -38,7 +38,7 @@ try {
   });
 }
     // console.log(key);
-    
+
   for (const {cid, path} of result) {
     await mm.ipfs.pin.add(cid)
     if (path === 'www') {
@@ -51,7 +51,7 @@ try {
           console.warn(`Failed publishing TAD`);
         }
       // }, 5000);
-      
+
       console.log(await mm.ipfs.swarm.peers());
     }
   }
@@ -67,11 +67,11 @@ try {
           console.warn(`Failed publishing GVW`);
         }
       // }, 5000);
-      
+
       console.log(await mm.ipfs.swarm.peers());
     }
   }
-  
+
   for (const {cid, path} of wetalk) {
     await mm.ipfs.pin.add(cid)
     if (path === 'www') {
@@ -81,15 +81,15 @@ try {
           const published = await mm.ipfs.name.publish(cid, {key: 'wetalk.leofcoin.org'})
           console.log({published});
         } catch (e) {
-          
+
             console.warn(`Failed publishing wetalk`);
         }
       // }, 5000);
-      
+
       console.log(await mm.ipfs.swarm.peers());
     }
   }
-  
+
 } catch (e) {
   console.log(e);
 }
@@ -101,23 +101,23 @@ try {
 //   // tape.equal(codes[0], code)
 //   const code1 = await mm.account.generateProfileQR({peerID: 'none', mnemonic: 'none'})
 //   // tape.equal(codes[1], code1)
-// 
+//
 //   // const generated = await mm.account.generateProfile()
 //   // console.log(generated);
-// 
+//
 //   // const qr = await mm.account.export('password')
 //   // console.log(qr);
 //   await mm.rm('hello')
   // mm.subscribe('peer:connected', async () => {
   //   try {
-  //     // const hello = await mm.get('hello')   
+  //     // const hello = await mm.get('hello')
   //     const web = await mm.get('2kdzsN4s7WYxQhD9q5EA7mtQS1yGjBQHLRTH23XvzHQcCxeJiz')
   //     console.log({web});
   //   } catch (e) {
-  //     console.error(e); 
+  //     console.error(e);
   //   }
   // })
-  
+
 // })
 // (async () => {
 //   try {

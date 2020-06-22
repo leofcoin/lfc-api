@@ -4,6 +4,7 @@ import { expected, debug } from './utils.js';
 import multicodec from 'multicodec';
 import DHT from 'libp2p-kad-dht';
 import MultiWallet from '@leofcoin/multi-wallet'
+import fetch from 'node-fetch'
 
 globalThis.leofcoin = globalThis.leofcoin || {}
 
@@ -17,22 +18,21 @@ export default class LeofcoinApi extends DiscoBus {
   constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false, star: false, network: 'leofcoin' }) {
     super()
     this.network = options.network || 'leofcoin'
-    
+
     this.account = new Account(this.network)
     if (options.init) return this._init(options)
   }
-  
+
   async hasDaemon() {
     try {
       let response = await fetch('http://127.0.0.1:5050/api/version')
-      response = await response.text()
-      if (!isNaN(Number(response))) return true
-      else return false
+      response = await response.json()
+      return Boolean(response.client === '@leofcoin/core/http')
     } catch (e) {
       return false
     }
   }
-  
+
   async environment() {
     const _navigator = globalThis.navigator
     if (_navigator && /electron/i.test(_navigator.userAgent) || !_navigator) {
@@ -41,28 +41,27 @@ export default class LeofcoinApi extends DiscoBus {
       return 'browser'
     }
   }
-  
+
   async target() {
     let daemon = false
-    const environment = this.environment()
+    const environment = await this.environment()
     if (!https) daemon = await this.hasDaemon()
-    
+
     return { daemon, environment }
   }
-  
+
   async _spawn(config = {}, forceJS = false, wallet = {}) {
     if (!config.target) config.target = await this.target()
+
+    console.log(config.target, forceJS);
     if (config.target.daemon && !forceJS) {
       let response = await fetch('http://127.0.0.1:5050/api/config')
-      wallet = await response.json()
-      GLOBSOURCE_IMPORT 
-      this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');
-      return
-    } else if (config.target.environment === 'node' && !forceJS){
-      DAEMON_IMPORT
+
+      response = await response.json()
+      wallet = response
+      console.log(wallet);
       GLOBSOURCE_IMPORT
-      this.ipfs = new IpfsHttpClient('/ip4/127.0.0.1/tcp/5555');  
-      return
+      this.ipfs = new IpfsHttpClient({host: 'localhost', port: 5555});
     } else {
       await STORAGE_IMPORT
       globalThis.accountStore = new LeofcoinStorage('lfc-account', `.leofcoin/${this.network}`)
@@ -84,16 +83,18 @@ export default class LeofcoinApi extends DiscoBus {
       return await this.spawnJsNode(wallet, config.bootstrap, config.star)
     }
   }
-  
+
   async _init({start, bootstrap, forceJS, star}) {
     await this._spawn({bootstrap, star}, forceJS)
-    
+
     this.api = {
       addFromFs: async (path, recursive = true) => {
+
         if (!globalThis.globSource) {
           GLOBSOURCE_IMPORT
         }
-        console.log(globSource(path, { recursive }));
+        console.log(globSource, path);
+        console.log(globSource(path, { recursive: false }));
         const files = []
         for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
           files.push(file)
@@ -104,22 +105,22 @@ export default class LeofcoinApi extends DiscoBus {
     // await globalApi(this)
     return this
   }
-  
-  async spawnJsNode (config, bootstrap, star) {    
+
+  async spawnJsNode (config, bootstrap, star) {
     await IPFS_IMPORT
-    
+
       if (!https && !globalThis.window) {
         config.Addresses = {
-      
+
         Swarm: [
           '/ip6/::/tcp/4020',
           '/ip4/0.0.0.0/tcp/4010',
           '/ip4/0.0.0.0/tcp/4030/ws'
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
-        API: '/ip4/127.0.0.1/tcp/5555',
+        API: '/ip4/localhost/tcp/5555',
         Delegates: ['node0.preload.ipfs.io']
-        
+
       }
       // if (star) config.Addresses.Swarm.push('/ip4/0.0.0.0/tcp/4030/ws');
       } else {
@@ -127,15 +128,15 @@ export default class LeofcoinApi extends DiscoBus {
           Swarm: [],
           API: '',
           Gateway: '',
-          Delegates: ['node0.preload.ipfs.io']        
+          Delegates: ['node0.preload.ipfs.io']
         }
       }
-      
+
     if (bootstrap === 'lfc') {
       if (https) {
         bootstrap = [
          '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
-       ]  
+       ]
      } else if (globalThis.window && !/electron/i.test(navigator.userAgent)){
         bootstrap = [
          '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
@@ -145,9 +146,9 @@ export default class LeofcoinApi extends DiscoBus {
         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
       ];
      }
-      
+
     } else if (star) bootstrap = [];
-    
+
     config = {
       pass: config.identity.privateKey,
       repo: walletStore.root,
@@ -203,13 +204,13 @@ export default class LeofcoinApi extends DiscoBus {
           webRTCStar: {
             enabled: true
           },
-          
+
           peerDiscovery: {
             autoDial: false,
             websocketStar: {
               enabled: true
             }
-          }     
+          }
         }
       },
       config: {
@@ -231,14 +232,14 @@ export default class LeofcoinApi extends DiscoBus {
             LowWater: 200,
             HighWater: 500
           }
-        },        
+        },
         Pubsub: {
           Enabled: true
         },
         Addresses: config.Addresses,
         API: {
           HTTPHeaders: {
-            'Access-Control-Allow-Origin': ['http://localhost'],
+            'Access-Control-Allow-Origin': ['http://localhost:5555/*'],
             'Access-Control-Allow-Methods': ['GET', 'PUT', 'POST']
           }
         }
@@ -249,14 +250,14 @@ export default class LeofcoinApi extends DiscoBus {
       },
       EXPERIMENTAL: { ipnsPubsub: true, sharding: true }
     }
-    
+
     try {
       this.ipfs = await Ipfs.create(config)
       const { id, addresses, publicKey } = await this.ipfs.id()
       this.addresses = addresses
       this.peerId = id
       this.publicKey = publicKey
-      
+
       const strap = await this.ipfs.config.get('Bootstrap')
       for (const addr of strap) {
         await this.ipfs.swarm.connect(addr)
@@ -264,9 +265,9 @@ export default class LeofcoinApi extends DiscoBus {
     } catch (e) {
       console.error(e);
     }
-    
-    
+
+
   }
-  
-  
+
+
 }
