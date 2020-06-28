@@ -6,6 +6,7 @@ import DHT from 'libp2p-kad-dht';
 import MultiWallet from '@leofcoin/multi-wallet'
 import fetch from 'node-fetch'
 
+
 globalThis.leofcoin = globalThis.leofcoin || {}
 
 let hasDaemon = false;
@@ -27,7 +28,7 @@ export default class LeofcoinApi extends DiscoBus {
     try {
       let response = await fetch('http://127.0.0.1:5050/api/version')
       response = await response.json()
-      return Boolean(response.client === '@leofcoin/core/http')
+      return Boolean(response.client === '@leofcoin/api/http')
     } catch (e) {
       return false
     }
@@ -52,16 +53,17 @@ export default class LeofcoinApi extends DiscoBus {
 
   async _spawn(config = {}, forceJS = false, wallet = {}) {
     if (!config.target) config.target = await this.target()
-
-    console.log(config.target, forceJS);
     if (config.target.daemon && !forceJS) {
-      let response = await fetch('http://127.0.0.1:5050/api/config')
-
-      response = await response.json()
-      wallet = response
-      console.log(wallet);
+      let response = await fetch('http://127.0.0.1:5050/api/wallet', {})
+      wallet = await response.json()
       GLOBSOURCE_IMPORT
-      this.ipfs = new IpfsHttpClient({host: 'localhost', port: 5555});
+      HTTPCLIENT_IMPORT
+      
+      // TODO: 
+      const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
+      globalThis.api = client.api
+      globalThis.ipfs = client.ipfs
+      return
     } else {
       await STORAGE_IMPORT
       globalThis.accountStore = new LeofcoinStorage('lfc-account', `.leofcoin/${this.network}`)
@@ -80,28 +82,20 @@ export default class LeofcoinApi extends DiscoBus {
       const multiWallet = new MultiWallet(this.network)
       multiWallet.import(wallet.identity.multiWIF)
       globalThis.leofcoin.wallet = multiWallet
+      if (config.target.environment === 'node') {
+        HTTP_IMPORT
+        http()
+      }
+      // HTTPCLIENT_IMPORT
+      // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
+      // globalThis.ipfs = client.ipfs
+      // globalThis.api = client.api
       return await this.spawnJsNode(wallet, config.bootstrap, config.star)
     }
   }
 
   async _init({start, bootstrap, forceJS, star}) {
     await this._spawn({bootstrap, star}, forceJS)
-
-    this.api = {
-      addFromFs: async (path, recursive = true) => {
-
-        if (!globalThis.globSource) {
-          GLOBSOURCE_IMPORT
-        }
-        console.log(globSource, path);
-        console.log(globSource(path, { recursive: false }));
-        const files = []
-        for await (const file of this.ipfs.add(globSource(path, { recursive }))) {
-          files.push(file)
-        }
-        return files;
-      }
-    }
     // await globalApi(this)
     return this
   }
@@ -118,7 +112,7 @@ export default class LeofcoinApi extends DiscoBus {
           '/ip4/0.0.0.0/tcp/4030/ws'
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
-        API: '/ip4/localhost/tcp/5555',
+        API: '/ip4/127.0.0.1/tcp/5555',
         Delegates: ['node0.preload.ipfs.io']
 
       }
@@ -236,13 +230,7 @@ export default class LeofcoinApi extends DiscoBus {
         Pubsub: {
           Enabled: true
         },
-        Addresses: config.Addresses,
-        API: {
-          HTTPHeaders: {
-            'Access-Control-Allow-Origin': ['http://localhost:5555/*'],
-            'Access-Control-Allow-Methods': ['GET', 'PUT', 'POST']
-          }
-        }
+        Addresses: config.Addresses
       },
       relay: {
         enabled: true,
@@ -252,15 +240,26 @@ export default class LeofcoinApi extends DiscoBus {
     }
 
     try {
-      this.ipfs = await Ipfs.create(config)
-      const { id, addresses, publicKey } = await this.ipfs.id()
+      globalThis.ipfs = await Ipfs.create(config)
+      const { id, addresses, publicKey } = await ipfs.id()
       this.addresses = addresses
       this.peerId = id
       this.publicKey = publicKey
 
-      const strap = await this.ipfs.config.get('Bootstrap')
+      const strap = await ipfs.config.get('Bootstrap')
       for (const addr of strap) {
-        await this.ipfs.swarm.connect(addr)
+        await ipfs.swarm.connect(addr)
+      }
+      
+      GLOBSOURCE_IMPORT
+      
+      ipfs.addFromFs = async (path, recursive = false) => {
+        console.log(await globSource(path, { recursive }));
+        const files = []
+        for await (const file of ipfs.add(globSource(path, { recursive }))) {
+          files.push(file)
+        }
+        return files;
       }
     } catch (e) {
       console.error(e);

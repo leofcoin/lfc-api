@@ -15,78 +15,71 @@ const {codes, privateKey, mnemonic } = {
 (async () => {
 try {
   const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: false, star: false}, 'lfc')
-  console.log(await mm.ipfs.swarm.peers())
-  const result = await mm.api.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
-  const veldshop = await mm.api.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
-  const wetalk = await mm.api.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
-  // const pinned = await mm.ipfs.pin.ls()
+  
+  const result = await ipfs.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
+  const veldshop = await ipfs.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
+  const wetalk = await ipfs.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
+  // const pinned = await ipfs.pin.ls()
   // for (const pin of pinned) {
   //   console.log(pin);
   // }
-  const keys = await mm.ipfs.key.list();
+  console.log({result});
+  const keys = await ipfs.key.list();
   let key
   for (const _key of keys) {
-    if (_key.name === `thealtereddimension.com`) key = _key
+    if (_key.name === `wetalk.leofcoin.org`) key = _key
   }
-  if (!key){ key = await mm.ipfs.key.gen(`thealtereddimension.com`, {
+  if (!key){ key = await ipfs.key.gen(`wetalk.leofcoin.org`, {
     type: 'rsa',
     size: 2048
   });
-  key = await mm.ipfs.key.gen(`thealtereddimension.be`, {
-    type: 'rsa',
-    size: 2048
-  });
+  // key = await ipfs.key.gen(`thealtereddimension.be`, {
+  //   type: 'rsa',
+  //   size: 2048
+  // });
 }
     // console.log(key);
 
   for (const {cid, path} of result) {
-    await mm.ipfs.pin.add(cid)
+    // console.log(cid.toString());
     if (path === 'www') {
       // setTimeout(async () => {
         console.log(`TAD: cid: ${cid.toString()}`);
         try {
-          const published = await mm.ipfs.name.publish(cid, {key: 'thealtereddimension.com'})
+          const published = await ipfs.name.publish(cid, {key: 'thealtereddimension.com'})
           console.log({published});
         } catch (e) {
           console.warn(`Failed publishing TAD`);
         }
       // }, 5000);
-
-      console.log(await mm.ipfs.swarm.peers());
     }
   }
   for (const {cid, path} of veldshop) {
-    await mm.ipfs.pin.add(cid)
     if (path === 'www') {
       // setTimeout(async () => {
         console.log(`GVW: cid: ${cid.toString()}`);
         try {
-          const published = await mm.ipfs.name.publish(cid, {key: 'guldentopveldwinkel.be'})
+          const published = await ipfs.name.publish(cid, {key: 'guldentopveldwinkel.be'})
           console.log({published});
         } catch (e) {
           console.warn(`Failed publishing GVW`);
         }
       // }, 5000);
-
-      console.log(await mm.ipfs.swarm.peers());
     }
   }
 
   for (const {cid, path} of wetalk) {
-    await mm.ipfs.pin.add(cid)
     if (path === 'www') {
       // setTimeout(async () => {
         console.log(`wetalk: cid: ${cid.toString()}`);
         try {
-          const published = await mm.ipfs.name.publish(cid, {key: 'wetalk.leofcoin.org'})
+          const published = await ipfs.name.publish(cid, {key: 'wetalk.leofcoin.org'})
           console.log({published});
         } catch (e) {
 
             console.warn(`Failed publishing wetalk`);
         }
       // }, 5000);
-
-      console.log(await mm.ipfs.swarm.peers());
     }
   }
 
