@@ -36,6 +36,8 @@ export default [{
   plugins: [
     json(),
     modify({
+      HTTP_IMPORT: '',
+      HTTPCLIENT_IMPORT: `globalThis.HttpClient = require('./http/http-client')`,
       GLOBSOURCE_IMPORT: '',
       DAEMON_IMPORT: '',
       STORAGE_IMPORT: `new Promise(async (resolve, reject) => {
@@ -103,6 +105,8 @@ export default [{
   plugins: [
     json(),
     modify({
+      HTTP_IMPORT: `globalThis.http = require('./http/http')`,
+      HTTPCLIENT_IMPORT: `globalThis.HttpClient = require('./http/http-client')`,
       GLOBSOURCE_IMPORT: `const IpfsHttpClient = require('ipfs-http-client');
       globalThis.IpfsHttpClient = IpfsHttpClient
       const { globSource } = IpfsHttpClient;
@@ -134,4 +138,13 @@ export default [{
   ],
   inlineDynamicImports: true,
   treeshake: true
+}, {
+  input: ['src/http/http.js', 'src/http/http-client.js'],
+  output: {
+    dir: 'http',
+    format: 'cjs'
+  },
+  plugins: [
+    json()
+  ]
 }]
