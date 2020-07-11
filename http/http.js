@@ -841,7 +841,7 @@ const balance = chain$1.getBalanceForAddress.bind(chain$1);
 
 const balanceAfter = chain$1.getBalanceForAddressAfter.bind(chain$1);
 
-var version = "2.14.4";
+var version = "2.15.0";
 var dependencies = {
 	"@koa/cors": "^3.1.0",
 	"@koa/router": "^9.0.1",
