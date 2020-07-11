@@ -299,7 +299,7 @@ class LeofcoinApi extends DiscoBus {
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
         API: '/ip4/127.0.0.1/tcp/5555',
-        Delegates: ['node0.preload.ipfs.io']
+        Delegates: ['node0.preload.ipfs.io/tcp/443/https']
 
       };
       // if (star) config.Addresses.Swarm.push('/ip4/0.0.0.0/tcp/4030/ws');
@@ -308,7 +308,7 @@ class LeofcoinApi extends DiscoBus {
           Swarm: [],
           API: '',
           Gateway: '',
-          Delegates: ['node0.preload.ipfs.io']
+          Delegates: ['node0.delegate.ipfs.io/tcp/443/https']
         };
       }
 
@@ -320,11 +320,11 @@ class LeofcoinApi extends DiscoBus {
      } else if (environment === 'node') {
         bootstrap = [
          '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4',
-         '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
+         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
        ];
      } else {
        bootstrap = [
-        '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
+        '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
       ];
      }
 
