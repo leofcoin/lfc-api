@@ -36,8 +36,10 @@ export default class LeofcoinApi extends DiscoBus {
 
   async environment() {
     const _navigator = globalThis.navigator
-    if (_navigator && /electron/i.test(_navigator.userAgent) || !_navigator) {
+    if (!_navigator) {
       return 'node'
+    } else if (_navigator && /electron/i.test(_navigator.userAgent)) {
+      return 'electron'
     } else {
       return 'browser'
     }
@@ -82,7 +84,7 @@ export default class LeofcoinApi extends DiscoBus {
       const multiWallet = new MultiWallet(this.network)
       multiWallet.import(wallet.identity.multiWIF)
       globalThis.leofcoin.wallet = multiWallet
-      if (config.target.environment === 'node') {
+      if (config.target.environment === 'node' || config.target.environment === 'electron') {
         HTTP_IMPORT
         http()
       }
@@ -90,7 +92,7 @@ export default class LeofcoinApi extends DiscoBus {
       // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
       // globalThis.ipfs = client.ipfs
       // globalThis.api = client.api
-      return await this.spawnJsNode(wallet, config.bootstrap, config.star)
+      return await this.spawnJsNode(wallet, config.bootstrap, config.star, config.target)
     }
   }
 
@@ -100,10 +102,10 @@ export default class LeofcoinApi extends DiscoBus {
     return this
   }
 
-  async spawnJsNode (config, bootstrap, star) {
+  async spawnJsNode (config, bootstrap, star, { environment }) {
     await IPFS_IMPORT
 
-      if (!https && !globalThis.window) {
+      if (environment === 'node') {
         config.Addresses = {
 
         Swarm: [
@@ -127,17 +129,18 @@ export default class LeofcoinApi extends DiscoBus {
       }
 
     if (bootstrap === 'lfc') {
-      if (https) {
+      if (environment === 'browser' && https || environment === 'electron') {
         bootstrap = [
          '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
        ]
-     } else if (globalThis.window && !/electron/i.test(navigator.userAgent)){
+     } else if (environment === 'node') {
         bootstrap = [
+         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4',
          '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
        ];
      } else {
        bootstrap = [
-        '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
+        '/dns4/star.leofcoin.org/tcp/4030/ws/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
       ];
      }
 

@@ -16,23 +16,23 @@ router.get('/api/wallet', async ctx => {
   ctx.body = await walletStore.get()
 })
 
-router.get('/api/config', ctx => {
+router.get('/api/config', async ctx => {
   if (ctx.request.query.miner) ctx.body = api.getMinerConfig()
   else ctx.body = await api.getConfig()
 })
 
-router.put('/api/config', ctx => {
+router.put('/api/config', async ctx => {
   if (ctx.request.query === 'miner') api.setMinerConfig(ctx.request.query.miner)
   else api.setConfig(ctx.request.query.value)
 })
 
-router.put('/api/config/miner', ctx => {
+router.put('/api/config/miner', async ctx => {
   console.log(ctx.request.query, ctx.request.query.intensity);
   if (ctx.request.query.intensity) api.setMinerConfig({intensity: ctx.request.query.intensity})
   // else api.setConfig(ctx.request.query.value)
 })
 
-router.get('/api/mine', ctx => {
+router.get('/api/mine', async ctx => {
   api.mine(api.getMinerConfig())
 })
 

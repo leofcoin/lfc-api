@@ -4,11 +4,772 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var Koa = _interopDefault(require('koa'));
 var Router = _interopDefault(require('@koa/router'));
+var IPLDLFCTx = require('ipld-lfc-tx');
+var IPLDLFCTx__default = _interopDefault(IPLDLFCTx);
+var joi = require('@hapi/joi');
+var ipldLfc = _interopDefault(require('ipld-lfc'));
+var CID = _interopDefault(require('cids'));
+var crypto = require('crypto');
+var MultiWallet = _interopDefault(require('@leofcoin/multi-wallet'));
 var fs = require('fs');
-var util = require('util');
+var util$2 = require('util');
 require('path');
 var bodyParser = _interopDefault(require('koa-bodyparser'));
 var cors = _interopDefault(require('@koa/cors'));
+
+const reward = 150;
+const consensusSubsidyInterval = 52500;
+const genesisCID = 'zsNS6wZiHSc2QPHmjV8TMNn798b4Kp9jpjsBNeUkPhaJTza3GosWUgE72Jy3X9jKMrFCcDni7Pq4yXogQN4TcAfrPmTXFt';
+const GENESISBLOCK = {
+	index: 0,
+  prevHash: Buffer.alloc(47).toString('hex'),
+  time: 1590240964,
+  transactions: [],
+  nonce: 1077701
+};
+
+/**
+ * network (hardcoded for now)
+ * @dev change to 'leofcoin:olivia' for testnet
+ */
+const network = 'leofcoin';
+
+// TODO: show notification
+/**
+ * @example
+ * const errors = new Errors()
+ */
+class Errors {
+  BlockError(text) {
+  }
+  
+  TransactionError(text) {
+  }
+  
+  MinerWarning(text) {
+  }
+}
+
+/**
+ * @extends {Errors}
+ * @example
+ * const validator = new Validator()
+ */
+class Validate extends Errors {
+	constructor() {
+		super();
+		
+		const block = joi.object().keys({
+			index: joi.number(),
+			prevHash: joi.string().length(94),
+			time: joi.number(),
+			transactions: joi.array().items(joi.object().keys({
+				multihash: joi.string(),
+				size: joi.number()
+			})),
+			nonce: joi.number(),
+			hash: joi.string().length(128)
+		});
+		
+		const transaction = joi.object().keys({
+			id: joi.string().hex().length(64),
+			time: joi.number(),
+			reward: joi.string(),
+			script: joi.string(),
+			inputs: joi.array().items(joi.object().keys({
+				tx: joi.string().hex().length(64),
+				index: joi.number(),
+				amount: joi.number(),
+				address: joi.string(),
+				signature: joi.string().hex()
+			})),
+			outputs: joi.array().items(joi.object().keys({
+				index: joi.number(),
+				amount: joi.number(),
+				address: joi.string()
+			})),
+		});
+		
+		this.schemas = {
+			block,
+			transaction,
+		};
+	}
+		
+	validate(schema, data) {
+		this.schemas[schema].validate(data);
+	}
+	
+	isValid(schema, data) {
+		return Boolean(!this.validate(schema, data).error)
+	};
+}
+
+const { LFCNode, util } = ipldLfc;
+
+/**
+ * @extends {Validator}
+ * @example
+ * const hash = new Hash()
+ */
+class Hash extends Validate {
+	constructor() {
+		super();
+	}
+	
+	hashFromMultihash(multihash) {
+	  const cid = new CID(multihash.replace('/ipfs/', ''));
+	  return cid.multihash.slice(cid.prefix.length / 2).toString('hex')
+	}
+	
+	multihashFromHash(hash) {
+	  const cid = new CID(1, 'leofcoin-block', Buffer.from(`1d40${hash}`, 'hex'), 'base58btc');
+	  return cid.toBaseEncodedString();
+	}
+	
+	async blockHash(block) {		
+	  block = await new LFCNode({...block});
+	  const cid = await util.cid(await block.serialize());
+	  return this.hashFromMultihash(cid.toBaseEncodedString());
+	}
+	
+	/**
+	 * Generate transaction hash
+	 *
+	 * @param {object} transaction {id, type, inputs, outputs}
+	 */
+	async transactionHash(transaction) {
+		const tx = new IPLDLFCTx__default.LFCTx(transaction);
+		const cid = await IPLDLFCTx__default.util.cid(tx.serialize());
+		return cid.toBaseEncodedString()
+	}
+
+	/**
+	 * Generate transaction input hash
+	 *
+	 * @param {object} transactionInput {transaction, index, amount, address}
+	 */
+	transactionInputHash(transactionInput) {
+		const {tx, index, amount, address} = transactionInput;
+		return _SHA256({tx, index, amount, address});
+	}
+
+}
+
+const { LFCTx, util: util$1 } = IPLDLFCTx;
+
+/**
+ * @extends {Hash}
+ * @example
+ * const transaction = new Transaction()
+ */
+class Transaction extends Hash {
+  constructor() {
+    super();
+  }
+  
+  
+  /**
+   * Create transaction
+   *
+   * @param inputs
+   * @param outputs
+   * @param reward
+   * @return {{id: string, reward: boolean, inputs: *, outputs: *, hash: string}}
+   */
+  async newTransaction(inputs, outputs, reward = null) {
+    try {
+      const tx = new LFCTx({
+        id: crypto.randomBytes(32).toString('hex'),
+        time: Math.floor(new Date().getTime() / 1000),
+        reward,
+        outputs,
+        inputs
+      });
+      // const cid = await util.cid(tx.serialize())
+      // await global.ipfs.dag.put(tx, {format: util.codec, hashAlg: util.defaultHashAlg, version: 1, baseFormat: 'base58btc'})
+      return tx
+    } catch (e) {
+      throw e
+    }
+  }
+  
+  /**
+   * Create reward transaction for block mining
+   *
+   * @param {string} address
+   * @param {number} height
+   * @return {id: string, reward: boolean, inputs: *, outputs: *, hash: string}
+   */
+  async createRewardTransaction(address, amount) {
+    return this.newTransaction([], [{index: 0, amount, address}], 'mined');
+  }
+  
+  /**
+   * validate transaction
+   *
+   * @param multihash
+   * @param transaction
+   * @param unspent
+   */
+  async validateTransaction(multihash, transaction, unspent) {
+  	if (!transaction.reward) delete transaction.reward;
+  	const outputs = transaction.outputs.map(o => {
+  		// TODO: fix script
+  		if (!o.script) delete o.script;
+  		return o
+  	});
+  	transaction.outputs = outputs;
+  	if (!transaction.script) delete transaction.script;
+  	if (!isValid('transaction', transaction)) throw this.TransactionError('Invalid transaction');
+  	if (multihash !== await this.transactionHash(transaction)) throw this.TransactionError('Invalid transaction hash');
+  	// TODO: versions should be handled here...
+  	// Verify each input signature
+  	
+  	if (transaction.inputs) {
+  		transaction.inputs.forEach(input => {
+  	  	const { signature, address } = input;
+  			const hash = this.transactionInputHash(input);
+  
+  	  	let wallet = new MultiWallet(network);
+  	    wallet.fromAddress(address, null, network);
+  			
+  			if (!wallet.verify(Buffer.from(signature, 'hex'), Buffer.from(hash, 'hex')))
+  				throw this.TransactionError('Invalid input signature');
+  		});
+  	
+  		// Check if inputs are in unspent list
+  		transaction.inputs.forEach((input) => {
+  			if (!unspent.find(out => out.tx === input.tx && out.index === input.index)) { throw this.TransactionError('Input has been already spent: ' + input.tx); }
+  		});	
+  	}
+  	
+  	if (transaction.reward === 'mined') {
+  		// For reward transaction: check if reward output is correct
+  		if (transaction.outputs.length !== 1) throw this.TransactionError('Reward transaction must have exactly one output');
+  		if (transaction.outputs[0].amount !== reward) throw this.TransactionError(`Mining reward must be exactly: ${reward}`);
+  	} else if (transaction.inputs) {
+  		// For normal transaction: check if total output amount equals input amount
+  		if (transaction.inputs.reduce((acc, input) => acc + input.amount, 0) !==
+        transaction.outputs.reduce((acc, output) => acc + output.amount, 0)) { throw this.TransactionError('Input and output amounts do not match'); }
+  	}
+  
+  	return true;
+  }
+  
+  /**
+   * validate transactions list for current block
+   *
+   * @param {array} transactions
+   * @param unspent
+   */
+  async validateTransactions(transactions, unspent) {
+  	const _transactions = [];
+  	for (const {multihash} of transactions) {
+  		const tx = await leofcoin.api.transaction.dag.get(multihash);
+  		_transactions.push({multihash, value: tx.toJSON()});
+  		
+  	}
+  	for (const {value, multihash} of _transactions) {
+  		// TODO: fix value.scrip
+  		await this.validateTransaction(multihash, value, unspent);
+  	}
+  	
+  	if (_transactions.filter(({value}) => value.reward === 'mined').length !== 1)
+  		throw this.TransactionError('Transactions cannot have more than one reward')	
+  }
+  
+  /**
+   * Verify signature
+   *
+   * @param {string} address - signer address
+   * @param {string} signature - signature to verify
+   * @param {string} hash - transaction hash
+   */
+  verifySignature(address, signature, hash) {
+  	const wallet = new MultiWallet(network);
+  	return wallet.verify(signature, hash, address);
+  }
+  
+  /**
+   * Create and sign input
+   *
+   * @param transaction Based on transaction id
+   * @param index Based on transaction output index
+   * @param amount
+   * @param wallet
+   * @return {transaction, index, amount, address}
+   */
+  createInput(transaction, index, amount, wallet) {
+  	const input = {
+  		transaction,
+  		index,
+  		amount,
+  		address: wallet.address,
+  	};
+  	input.signature = wallet.sign(Buffer.from(this.transactionInputHash(input), 'hex')).toString('hex');
+  	return input;
+  }
+  
+  /**
+   * Create a transaction
+   *
+   * @param wallet
+   * @param toAddress
+   * @param amount
+   * @return {id, reward, inputs, outputs, hash,}
+   */
+  async buildTransaction(wallet, toAddress, amount, unspent) {
+  	let inputsAmount = 0;
+  	// const unspent = await this.getUnspentForAddress(wallet.address);
+  	const inputsRaw = unspent.filter(i => {
+  		const more = inputsAmount < amount;
+  		if (more) inputsAmount += i.amount;
+  		return more;
+  	});
+  	if (inputsAmount < amount) throw this.TransactionError('Not enough funds');
+  	// TODO: Add multiSigning
+  	const inputs = inputsRaw.map(i => this.createInput(i.tx, i.index, i.amount, wallet));
+  	// Send amount to destination address
+  	const outputs = [{index: 0, amount, address: toAddress}];
+  	// Send back change to my wallet
+  	if (inputsAmount - amount > 0) {
+  		outputs.push({index: 1, amount: inputsAmount - amount, address: wallet.address});
+  	}
+  	return this.newTransaction(inputs, outputs);
+  }
+}
+
+const { LFCNode: LFCNode$1 } = ipldLfc;
+
+
+/**
+ * @extends {Transaction}
+ * @example
+ * const block = new Block()
+ */
+class Block extends Transaction {
+  constructor() {
+    super();
+  }
+  
+  getDifficulty(hash) {
+	   return parseInt(hash.substring(0, 8), 16);
+  }
+  
+  goodBlock(block, difficulty){
+    return new Promise(async (resolve, reject) => {
+      block.hash = await this.blockHash(block);
+      if (parseInt(block.hash.substring(0, 8), 16) >= difficulty) {
+        block.nonce++;
+        block = await this.goodBlock(block, difficulty);
+      }      
+      resolve(block);
+    })
+  }
+  
+  async validate(previousBlock, block, difficulty, unspent) {
+  	if (!this.isValid('block', block)) throw this.BlockError('data');
+  	// console.log(block, previousBlock);
+  	if (previousBlock.index + 1 !== block.index) throw this.BlockError('index');
+  	if (previousBlock.hash !== block.prevHash) throw this.BlockError('prevhash');
+  	if (await this.blockHash(block) !== block.hash) throw this.BlockError('hash');
+  	if (this.getDifficulty(block.hash) > difficulty) throw this.BlockError('difficulty');
+  	return this.validateTransactions(block.transactions, unspent);
+  }
+  
+  /**
+   * Create a new genesis block
+   */
+  async newGenesisDAGNode(difficulty = 1, address = Buffer.alloc(32).toString('hex')) {
+    let block = {
+      index: 0,
+      prevHash: Buffer.alloc(47).toString('hex'),
+      time: Math.floor(new Date().getTime() / 1000),
+      transactions: [
+        // ms.unspent(network, [], wallet.account()).create(index: 0, amount: consensusSubsidy(0), address)
+      ],
+      nonce: 0
+    };
+    block.hash = await blockHash(block);
+    block = await this.goodBlock(block, difficulty);
+    console.log({block});
+    const node = new LFCNode$1(block);
+    return node;
+  }
+}
+
+const invalidTransactions = {};
+
+globalThis.chain = globalThis.chain || [
+  GENESISBLOCK
+];
+
+globalThis.mempool = globalThis.mempool || [];
+globalThis.blockHashSet = globalThis.blockHashSet || [];
+
+const filterPeers = (peers, localPeer) => {
+  const set = [];
+  return peers.reduce((p, c) => {
+    if (set.indexOf(c.peer) === -1 && c.peer !== localPeer) {
+      set.push(c.peer);
+      p.push(c);
+    }
+    return p
+  }, [])
+};
+
+/**
+ * @extends {Block}
+ * @example
+ * const chain = new Chain()
+ */
+class Chain extends Block {
+  constructor() {
+    super();
+  }
+  
+  get chain() { return globalThis.chain }
+  
+  get mempool() { return globalThis.mempool }
+  
+  get blockHashSet() { return globalThis.blockHashSet }
+  
+  // TODO: needs 3 nodes running
+  invalidTransaction(data) {
+    // console.log(data.data.toString());
+    data = JSON.parse(data.data.toString());
+    if (!invalidTransactions[data.tx]) invalidTransactions[data.tx] = 0;
+    ++invalidTransactions[data.tx];
+    const count = invalidTransactions[data.tx];
+    if (count === 3) {
+      const memIndex = mempool.indexOf(data);
+      mempool.splice(memIndex, 1);
+      delete invalidTransactions[data.tx];
+    }
+  }
+  
+  /**
+   * @param {number} height
+   */
+  consensusSubsidy(height) {
+    console.log(height);
+  	const quarterlings = height / consensusSubsidyInterval;
+  	if (quarterlings >= 256) {
+  		return 0;
+  	}
+  	//subsidy is lowered by 12.5 %, approx every year
+  	const minus = quarterlings >= 1 ? (quarterlings * (reward / 256)) : 0;
+  	return reward - minus;
+  }
+  
+  async getTransactions(withMempool = true, index = 0) {
+    const _chain = [...chain];
+    if (index === chain.length - 1) return []
+    _chain.slice(index + 1, chain.length - 1);
+  	let transactions = _chain.reduce((transactions, block) => [ ...transactions, ...block.transactions], []);
+  	if (withMempool) transactions = transactions.concat(mempool);
+    let _transactions = [];
+    // TODO: deprecated, get/put should be handled in core
+    for (const tx of transactions) {
+      const {multihash} = tx;
+      if (multihash) {
+        let value;
+        if (leofcoin.api.transaction.dag) value = await leofcoin.api.transaction.dag.get(multihash);
+        _transactions.push(value);
+      } else {
+        _transactions.push(tx);
+      }
+      
+    }
+    return _transactions
+  };
+  
+  async getTransactionsForAddress(address, index = 0) {
+    const transactions = await this.getTransactions(false, index);
+  	return transactions.filter(tx => tx.inputs.find(i => i.address === address) ||
+    tx.outputs.find(o => o.address === address));
+  };
+  
+  /**
+   * 
+   * @param {string} withMempool - with or without mempool inclusion
+   * @param {number} index - block height to start from
+   */
+  async getUnspent(withMempool = false, index = 0) {
+  	const transactions = await this.getTransactions(withMempool, index);
+  	// Find all inputs with their tx ids
+  	const inputs = transactions.reduce((inputs, tx) => inputs.concat(tx.inputs), []);
+  
+  	// Find all outputs with their tx ids
+  	const outputs = transactions.reduce((outputs, tx) =>
+  		outputs.concat(tx.outputs.map(output => Object.assign({}, output, {tx: tx.id}))), []);
+  
+  	// Figure out which outputs are unspent
+  	const unspent = outputs.filter(output =>
+  		typeof inputs.find(input => input.tx === output.tx && input.index === output.index && input.amount === output.amount) === 'undefined');
+  	return unspent;
+  }
+  
+  /**
+   * @param {string} address - wallet address
+   * @param {number} index - block height to start from
+   */
+  async getUnspentForAddress(address = null, index = 0) {
+    const unspent = await this.getUnspent(true, index);
+  	return unspent.filter(u => u.address === address);
+  }
+  
+  /**
+   * @param {string} address - wallet address
+   */
+  async getBalanceForAddress(address = null, index) {
+    // debug(`Getting balance for ${address}`)
+    const unspent = await this.getUnspentForAddress(address, index);
+    const amount = unspent.reduce((acc, u) => acc + u.amount , 0);
+    // debug(`Got ${amount} for ${address}`)
+  	return amount
+  }
+  
+  /**
+   * @deprecated Use getTransactionsForAddress(addr, index) instead
+   *
+   * @param {string} address - wallet address
+   * @param {number} index - block height to start from
+   * 
+   * @return {number} balance
+   */
+  async getBalanceForAddressAfter(address = null, index = 0) {
+    // debug(`Getting balance for ${address} @${index}`)
+    const unspent = await this.getUnspentForAddress(address, index);
+    const amount = unspent.reduce((acc, u) => acc + u.amount , 0);
+    // debug(`Got ${amount} for ${address} @${index}`)
+    return amount
+  }
+  
+  median(array) {
+    array.sort((a,b) => a - b);
+  
+    var half = Math.floor(array.length / 2);
+  
+    if(array.length % 2)
+      return array[half];
+    else
+      return (array[half - 1] + array[half]) / 2.0;
+  }
+  
+  difficulty() {
+  	// TODO: lower difficulty when transactionpool contain more then 500 tx ?
+  	// TODO: raise difficulty when pool is empty
+  
+    // or
+  
+    // TODO: implement iTX (instant transaction)
+    // iTX is handled by multiple peers, itx is chained together by their hashes
+    // by handlng a tx as itx the block well be converted into a iRootBlock
+    // this results into smaller chains (tangles, tails) which should improve
+    // resolving transactions, wallet amounts etc ...
+  	const start = chain.length >= 128 ? (chain.length - 128) : 0;
+  	const blocks = chain.slice(start, (chain.length - 1)).reverse();
+  	const stamps = [];
+  	for (var i = 0; i < blocks.length; i++) {
+  		if (blocks[i + 1]) {
+  			stamps.push(blocks[i].time - blocks[i + 1].time);
+  		}
+  	}
+  	if (stamps.length === 0) {
+  		stamps.push(10);
+  	}
+  	let blocksMedian = this.median(stamps) || 10;
+    const offset = blocksMedian / 10;
+     // offset for quick recovery
+  	if (blocksMedian < 10) {
+  		blocksMedian -= (offset / 2);
+  	} else if (blocksMedian > 10) {
+  		blocksMedian += (offset * 2);
+  	}
+    if (blocksMedian < 0) blocksMedian = -blocksMedian;
+    console.log(`Average Block Time: ${blocksMedian}`);
+    console.log(`Difficulty: ${10 / blocksMedian}`);
+  	return (1000 / (10 / blocksMedian));
+  };//10000
+  
+  
+  /**
+   * Get the transactions for the next Block
+   *
+   * @return {object} transactions
+   */
+  async nextBlockTransactions() {
+  	const unspent = await this.getUnspent(false);
+    console.log(unspent);
+  	return mempool.filter(async (transaction) => {
+      console.log(transaction);
+      const multihash = transaction.multihash;
+      const value = await leofcoin.api.transaction.get(multihash);
+      console.log({value});
+  		try {
+  			await this.validateTransaction(multihash, value, unspent);
+        return transaction
+  		} catch (e) {
+        globalThis.ipfs.pubsub.publish('invalid-transaction', Buffer.from(JSON.stringify(transaction)));
+  			console.error(e);
+  		}
+  	});
+  }  
+  
+  longestChain() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        let peers = await globalThis.ipfs.swarm.peers();
+        peers = await filterPeers(peers, globalThis.peerId);
+        
+        const set = [];
+        for (const {peer} of peers) {
+          const chunks = [];
+          try {
+            for await (const chunk of ipfs.name.resolve(peer)) {
+              chunks.push(chunk);
+            }
+          } catch (e) {
+            console.warn(e);
+          }
+          if (chunks.length > 0) set.push({peer, path: chunks});
+        }
+        const _peers = [];
+        let _blocks = [];
+        for (const {peer, path} of set) {    
+          if (_peers.indexOf(peer) === -1) {
+            _peers.push(peer);
+            const block = await leofcoin.api.block.dag.get(path[0] || path);      
+            _blocks.push({block, path: path[0] || path});        
+          }        
+        }
+        
+        let localIndex;
+        let localHash;
+        try {
+          localIndex = await chainStore.get('localIndex');
+          localHash = await chainStore.get('localBlock');
+        } catch (e) {
+          localIndex = 0;
+          localHash = genesisCID;
+          await chainStore.put('localIndex', 0);
+          await chainStore.put('localBlock', genesisCID);
+        }
+        const history = {};
+        _blocks = _blocks.reduce((set, {block, path}) => {
+          if (set.block.index < block.index) {
+            history[set.block.index] = set;
+            set.block.index = block.index;
+            set.hash = path.replace('/ipfs/', '');
+            set.seen = 1;
+          } else if (set.block.index === block.index) {
+            set.seen = Number(set.seen) + 1;
+          }
+          return set
+        }, {block: { index: localIndex }, hash: localHash, seen: 0});
+        // temp 
+        // if (_blocks.seen < 2) {
+        //   _blocks = history[_blocks.block.index - 1]
+        // 
+        // }
+        // const localIndex = await chainStore.get('localIndex')
+        // const localHash = await chainStore.get('localBlock')
+        return resolve({index: _blocks.block.index, hash: _blocks.hash})
+        
+      } catch (e) {
+        console.warn(e);
+        // debug(e)
+        reject(e);
+      }
+    })
+  }
+  
+  lastBlock() {
+    return new Promise(async (resolve, reject) => {
+      const result = await this.longestChain();
+      
+      resolve(result); // retrieve links
+    });
+  }
+  
+  
+  async nextBlock(address) {
+    console.log(address);
+    console.log({address});
+    let transactions;
+    let previousBlock;
+    try {
+      previousBlock = await this.lastBlock();
+      
+      if (previousBlock.index > chain.length - 1) {
+        await leofcoin.api.chain.sync();
+        previousBlock = await this.lastBlock();
+      }
+      if (!previousBlock.index) previousBlock = chain[chain.length - 1];
+      transactions = await this.nextBlockTransactions();
+    } catch (e) {
+      previousBlock = GENESISBLOCK;
+      previousBlock.hash = genesisCID;
+      transactions = await this.nextBlockTransactions();
+    } finally {
+      // console.log(transactions, previousBlock, address);
+      console.log({transactions});
+      return await this.newBlock({transactions, previousBlock, address});
+    }
+  }  
+  
+  /**
+  	 * Create new block
+  	 *
+  	 * @param {array} transactions
+  	 * @param {object} previousBlock
+  	 * @param {string} address
+  	 * @return {index, prevHash, time, transactions, nonce}
+  	 */
+  async newBlock({transactions = [], previousBlock, address}) {
+  	const index = previousBlock.index + 1;
+  	const minedTx = await this.createRewardTransaction(address, this.consensusSubsidy(index));
+  	transactions.push(minedTx.toJSON());
+    console.log({transactions});
+  	this.data = {
+  		index,
+  		prevHash: previousBlock.hash,
+  		time: Math.floor(new Date().getTime() / 1000),
+  		transactions,
+  		nonce: 0
+  	};
+    console.log({data: this.data});
+  	this.data.hash = await this.blockHash(this.data);
+    console.log({hash: this.data.hash});
+  	return this.data;
+  }
+}
+
+const chain$1 = new Chain();
+const miners = [];
+
+globalThis.bus = globalThis.bus || {};
+
+globalThis.states = globalThis.states || {
+  ready: false,
+  syncing: false,
+  connecting: false,
+  mining: false
+};
+/**
+* state - get current app state
+*
+* @param {string} key - event name
+* @param {boolean|string} [wait=false|wait='event'] - wait untill next event when asked state is false
+* or wait untill next event when set to 'event'
+*/
+const state = (key, wait) => new Promise(async (resolve, reject) => {
+  const state = await globalThis.states[key];
+  if (wait && !state || wait && wait === 'event') bus.once(key, state => resolve(state));
+  else resolve(state);
+});
 
 const getConfig = async () => await accountStore.get('config');
 
@@ -21,19 +782,72 @@ const setMinerConfig = async minerConfig => {
   return;
 };
 
-var api = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  getConfig: getConfig,
-  setConfig: setConfig,
-  setMinerConfig: setMinerConfig
-});
+const getMinerConfig = async () => {
+  const data = await getConfig();
+  return data.miner;
+};
 
-var version = "2.14.3";
+const mine = async config => {
+  await state('ready', true);
+  if (!config) {
+    config = await accountStore.get('config');
+    config = config.miner;
+  }
+  let { address, intensity, donationAddress, donationAmount } = config;
+  if (!intensity) intensity = 1;
+  if (intensity && typeof intensity === 'string') intensity = Number(intensity);
+  console.log({ address, intensity, donationAddress, donationAmount });
+  if (donationAddress && donationAmount === 'undefined') donationAmount = 3; //procent
+  const addMiner = count => {
+    for (var i = 0; i < count; i++) {
+      const miner = new Miner();
+      miner.address = address;
+      // miner.donationAddress = donationAddress;
+      // miner.donationAmount = donationAmount;
+      miner.start();
+      miners.push(miner);
+    }
+  };
+  if (globalThis.states.mining && miners.length === intensity) {
+    miners.forEach(miner => miner.stop());
+    globalThis.states.mining = false;
+  } else if (!globalThis.states.mining && miners.length === intensity) {
+    miners.forEach(miner => miner.start());
+    globalThis.states.mining = true;
+  } else {
+    if (miners.length > 0 && miners.length === intensity) {
+      miners.forEach(miner => {
+        miner.address = address;
+      });
+    } else if (miners.length > intensity) {
+      const removeCount = miners.length - intensity;
+      const removed = miners.slice(0, removeCount);
+      removed.forEach(miner => miner.stop());
+    } else if (miners.length < intensity && miners.length > 0) {
+      const addCount = intensity - miners.length;
+      addMiner(addCount);
+    } else {
+      addMiner(intensity);
+    }
+    globalThis.states.mining = true;
+  }
+  // TODO: add donationAddress
+  // TODO: add donation option in ui
+  // if (!address) address = donationAddress;
+
+};
+
+const balance = chain$1.getBalanceForAddress.bind(chain$1);
+
+const balanceAfter = chain$1.getBalanceForAddressAfter.bind(chain$1);
+
+var version = "2.14.4";
 var dependencies = {
 	"@koa/cors": "^3.1.0",
 	"@koa/router": "^9.0.1",
 	"@leofcoin/daemon": "^1.0.15",
 	"@leofcoin/disco-bus": "^1.0.4",
+	"@leofcoin/lib": "^0.2.0",
 	"@leofcoin/multi-wallet": "^2.0.0",
 	"@leofcoin/storage": "^2.0.0",
 	base32: "0.0.6",
@@ -68,27 +882,27 @@ router.get('/api/wallet', async ctx => {
   ctx.body = await walletStore.get();
 });
 
-router.get('/api/config', ctx => {
-  if (ctx.request.query.miner) ctx.body = undefined();
-  else ctx.body = getConfig();
+router.get('/api/config', async ctx => {
+  if (ctx.request.query.miner) ctx.body = getMinerConfig();
+  else ctx.body = await getConfig();
 });
 
-router.put('/api/config', ctx => {
+router.put('/api/config', async ctx => {
   if (ctx.request.query === 'miner') setMinerConfig(ctx.request.query.miner);
   else setConfig(ctx.request.query.value);
 });
 
-router.put('/api/config/miner', ctx => {
+router.put('/api/config/miner', async ctx => {
   console.log(ctx.request.query, ctx.request.query.intensity);
   if (ctx.request.query.intensity) setMinerConfig({intensity: ctx.request.query.intensity});
   // else api.setConfig(ctx.request.query.value)
 });
 
-router.get('/api/mine', ctx => {
-  undefined(undefined());
+router.get('/api/mine', async ctx => {
+  mine(getMinerConfig());
 });
 
-const readdir = util.promisify(fs.readdir);
+const readdir = util$2.promisify(fs.readdir);
 
 const version$1 = dependencies.ipfs.replace('^', '');
 
