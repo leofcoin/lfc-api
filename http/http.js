@@ -841,10 +841,10 @@ const balance = chain$1.getBalanceForAddress.bind(chain$1);
 
 const balanceAfter = chain$1.getBalanceForAddressAfter.bind(chain$1);
 
-var version = "2.15.0";
+var version = "2.16.0";
 var dependencies = {
 	"@koa/cors": "^3.1.0",
-	"@koa/router": "^9.0.1",
+	"@koa/router": "^9.3.1",
 	"@leofcoin/daemon": "^1.0.15",
 	"@leofcoin/disco-bus": "^1.0.4",
 	"@leofcoin/lib": "^0.2.0",
@@ -853,18 +853,16 @@ var dependencies = {
 	base32: "0.0.6",
 	base58: "^2.0.1",
 	ipfs: "^0.46.0",
-	"ipfs-http-client": "^44.2.0",
+	"ipfs-http-client": "^44.3.0",
 	"ipld-lfc": "^0.1.4",
 	"ipld-lfc-tx": "^0.3.3",
 	"koa-bodyparser": "^4.3.0",
-	libp2p: "^0.28.3",
-	"libp2p-delegated-content-routing": "^0.5.0",
-	"libp2p-delegated-peer-routing": "^0.5.0",
-	"libp2p-kad-dht": "^0.19.7",
-	"little-pubsub": "^1.1.0",
+	"libp2p-kad-dht": "^0.19.9",
+	"libp2p-pubsub": "^0.4.6",
+	"little-pubsub": "^1.2.0",
 	"node-fetch": "^2.6.0",
-	"peer-id": "^0.13.12",
-	"qr-scanner": "^1.1.1",
+	"peer-id": "^0.13.13",
+	"qr-scanner": "^1.2.0",
 	qrcode: "^1.4.4"
 };
 

@@ -111,8 +111,8 @@ export default [{
       globalThis.IpfsHttpClient = IpfsHttpClient
       const { globSource } = IpfsHttpClient;
       globalThis.globSource = globSource;`,
-      DAEMON_IMPORT: `const { run } = require('@leofcoin/daemon');
-      await run()`,
+      DAEMON_IMPORT: `// const { run } = require('@leofcoin/daemon');
+      // await run()`,
     STORAGE_IMPORT: `new Promise((resolve, reject) => {
       if (!LeofcoinStorage) LeofcoinStorage = require('@leofcoin/storage');
       resolve()
