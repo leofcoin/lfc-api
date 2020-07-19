@@ -23,7 +23,6 @@ try {
   // for (const pin of pinned) {
   //   console.log(pin);
   // }
-  console.log({result});
   const keys = await ipfs.key.list();
   let key
   for (const _key of keys) {
