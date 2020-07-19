@@ -257,7 +257,6 @@ export default class LeofcoinApi extends DiscoBus {
     }
 
     try {
-      console.log({config});
       globalThis.ipfs = await Ipfs.create(config)
       const { id, addresses, publicKey } = await ipfs.id()
       this.addresses = addresses
