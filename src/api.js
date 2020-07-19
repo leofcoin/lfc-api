@@ -59,12 +59,13 @@ export default class LeofcoinApi extends DiscoBus {
       let response = await fetch('http://127.0.0.1:5050/api/wallet', {})
       wallet = await response.json()
       GLOBSOURCE_IMPORT
-      HTTPCLIENT_IMPORT
+      // TODO: give client its own package
+      // HTTPCLIENT_IMPORT
       
-      // TODO: 
-      const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
-      globalThis.api = client.api
-      globalThis.ipfs = client.ipfs
+      
+      // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
+      // globalThis.api = client.api
+      // globalThis.ipfs = client.ipfs
       return
     } else {
       await STORAGE_IMPORT
@@ -84,10 +85,10 @@ export default class LeofcoinApi extends DiscoBus {
       const multiWallet = new MultiWallet(this.network)
       multiWallet.import(wallet.identity.multiWIF)
       globalThis.leofcoin.wallet = multiWallet
-      if (config.target.environment === 'node' || config.target.environment === 'electron') {
-        HTTP_IMPORT
-        http()
-      }
+      // if (config.target.environment === 'node' || config.target.environment === 'electron') {
+      //   HTTP_IMPORT
+      //   http()
+      // }
       // HTTPCLIENT_IMPORT
       // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
       // globalThis.ipfs = client.ipfs
@@ -104,7 +105,6 @@ export default class LeofcoinApi extends DiscoBus {
 
   async spawnJsNode (config, bootstrap, star, { environment }) {
     await IPFS_IMPORT
-
       if (environment === 'node') {
         config.Addresses = {
 
@@ -114,7 +114,7 @@ export default class LeofcoinApi extends DiscoBus {
           '/ip4/0.0.0.0/tcp/4030/ws'
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
-        API: '/ip4/127.0.0.1/tcp/5555',
+        API: '/ip4/127.0.0.1/tcp/5001',
         Delegates: ['node0.preload.ipfs.io/tcp/443/https']
 
       }
@@ -211,6 +211,20 @@ export default class LeofcoinApi extends DiscoBus {
         }
       },
       config: {
+        
+        API: {
+          "HTTPHeaders": {
+            "Access-Control-Allow-Origin": [
+              "http://localhost:5001",
+              "*"
+            ],
+            "Access-Control-Allow-Methods": [
+              "GET",
+              "PUT",
+              "POST"
+            ]
+          }
+        },
         Bootstrap: bootstrap,
         Discovery: {
           MDNS: {
@@ -243,6 +257,7 @@ export default class LeofcoinApi extends DiscoBus {
     }
 
     try {
+      console.log({config});
       globalThis.ipfs = await Ipfs.create(config)
       const { id, addresses, publicKey } = await ipfs.id()
       this.addresses = addresses
