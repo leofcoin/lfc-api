@@ -748,7 +748,6 @@ class Chain extends Block {
 }
 
 const chain$1 = new Chain();
-const miners = [];
 
 globalThis.bus = globalThis.bus || {};
 
@@ -758,18 +757,6 @@ globalThis.states = globalThis.states || {
   connecting: false,
   mining: false
 };
-/**
-* state - get current app state
-*
-* @param {string} key - event name
-* @param {boolean|string} [wait=false|wait='event'] - wait untill next event when asked state is false
-* or wait untill next event when set to 'event'
-*/
-const state = (key, wait) => new Promise(async (resolve, reject) => {
-  const state = await globalThis.states[key];
-  if (wait && !state || wait && wait === 'event') bus.once(key, state => resolve(state));
-  else resolve(state);
-});
 
 const getConfig = async () => await accountStore.get('config');
 
@@ -787,61 +774,11 @@ const getMinerConfig = async () => {
   return data.miner;
 };
 
-const mine = async config => {
-  await state('ready', true);
-  if (!config) {
-    config = await accountStore.get('config');
-    config = config.miner;
-  }
-  let { address, intensity, donationAddress, donationAmount } = config;
-  if (!intensity) intensity = 1;
-  if (intensity && typeof intensity === 'string') intensity = Number(intensity);
-  console.log({ address, intensity, donationAddress, donationAmount });
-  if (donationAddress && donationAmount === 'undefined') donationAmount = 3; //procent
-  const addMiner = count => {
-    for (var i = 0; i < count; i++) {
-      const miner = new Miner();
-      miner.address = address;
-      // miner.donationAddress = donationAddress;
-      // miner.donationAmount = donationAmount;
-      miner.start();
-      miners.push(miner);
-    }
-  };
-  if (globalThis.states.mining && miners.length === intensity) {
-    miners.forEach(miner => miner.stop());
-    globalThis.states.mining = false;
-  } else if (!globalThis.states.mining && miners.length === intensity) {
-    miners.forEach(miner => miner.start());
-    globalThis.states.mining = true;
-  } else {
-    if (miners.length > 0 && miners.length === intensity) {
-      miners.forEach(miner => {
-        miner.address = address;
-      });
-    } else if (miners.length > intensity) {
-      const removeCount = miners.length - intensity;
-      const removed = miners.slice(0, removeCount);
-      removed.forEach(miner => miner.stop());
-    } else if (miners.length < intensity && miners.length > 0) {
-      const addCount = intensity - miners.length;
-      addMiner(addCount);
-    } else {
-      addMiner(intensity);
-    }
-    globalThis.states.mining = true;
-  }
-  // TODO: add donationAddress
-  // TODO: add donation option in ui
-  // if (!address) address = donationAddress;
-
-};
-
 const balance = chain$1.getBalanceForAddress.bind(chain$1);
 
 const balanceAfter = chain$1.getBalanceForAddressAfter.bind(chain$1);
 
-var version = "2.16.0";
+var version = "2.16.1";
 var dependencies = {
 	"@koa/cors": "^3.1.0",
 	"@koa/router": "^9.3.1",
@@ -852,13 +789,13 @@ var dependencies = {
 	"@leofcoin/storage": "^2.0.0",
 	base32: "0.0.6",
 	base58: "^2.0.1",
-	ipfs: "^0.46.0",
+	ipfs: "^0.48.0",
 	"ipfs-http-client": "^44.3.0",
 	"ipld-lfc": "^0.1.4",
 	"ipld-lfc-tx": "^0.3.3",
 	"koa-bodyparser": "^4.3.0",
 	"libp2p-kad-dht": "^0.19.9",
-	"libp2p-pubsub": "^0.4.6",
+	"libp2p-pubsub": "^0.4.7",
 	"little-pubsub": "^1.2.0",
 	"node-fetch": "^2.6.0",
 	"peer-id": "^0.13.13",
@@ -867,6 +804,79 @@ var dependencies = {
 };
 
 const router = new Router();
+
+const accounts = async (discoverDepth = 0) => {
+  let wallet;
+  let accounts = undefined;
+  try {
+    wallet = leofcoin.wallet;
+    accounts = discoverAccounts(wallet, discoverDepth);
+  } catch (e) {
+    console.log('readied');
+  }
+  return accounts;
+};
+
+const _discoverAccounts = async (account, depth = 0) => {
+  const accounts = [];
+  const discover = async (account, depth) => {
+    const external = account.external(depth);
+    const internal = account.internal(depth);
+    const tx = [];
+    accounts.push(account);
+    for (const { transactions } of globalThis.chain) {
+      if (accounts[external.address] || accounts[internal.address]) return;
+			for (let transaction of transactions) {
+				const {multihash} = transaction;
+				
+				if (multihash) {
+					transaction = await leofcoin.api.transaction.get(multihash);
+				}
+				if (tx[internal.address] || tx[external.address]) return;
+				if (transaction.inputs) transaction.inputs.forEach((i) => {
+					if (i.address === internal.address) return tx.push(internal.address);
+					if (i.address === external.address) return tx.push(external.address);
+				});
+				if (transaction.outputs) transaction.outputs.forEach((o) => {
+					if (o.address === internal.address) return tx.push(internal.address);
+					if (o.address === external.address) return tx.push(external.address);
+				});	
+			}
+    }
+    // discover untill we find no transactions for given address
+    if (tx.length > 0) return discover(account, depth + 1);
+    return accounts;
+  };
+
+  return discover(account, 0);
+
+};
+
+/**
+ * @param {object} root Instance of MultiWallet
+ */
+const discoverAccounts = async (root) => {
+  let accounts = [];
+  /**
+   * @param {number} depth account depth
+   */
+  const discover = async depth => {
+		
+			debug('discovering accounts');
+    const account = root.account(depth);
+    const _accounts = await _discoverAccounts(account);
+    accounts = [...accounts, _accounts];
+		
+		debug('done discovering accounts');
+		if (_accounts.length > 1) return discover(depth + 1);
+    return accounts;
+  };
+
+  return discover(0);
+
+};
+
+const accountNames = async () => await walletStore.get('accounts');
 
 router.get('/api/version', ctx => {
   ctx.body = {client: '@leofcoin/api/http', version};
@@ -886,8 +896,7 @@ router.get('/api/config', async ctx => {
 });
 
 router.put('/api/config', async ctx => {
-  if (ctx.request.query === 'miner') setMinerConfig(ctx.request.query.miner);
-  else setConfig(ctx.request.query.value);
+  setConfig(ctx.request.query.value);
 });
 
 router.put('/api/config/miner', async ctx => {
@@ -896,8 +905,13 @@ router.put('/api/config/miner', async ctx => {
   // else api.setConfig(ctx.request.query.value)
 });
 
-router.get('/api/mine', async ctx => {
-  mine(getMinerConfig());
+router.get('/api/addresses', async ctx => {
+  let _accounts = await accounts();
+  const names = await accountNames();
+  // TODO: allow account by name (even when there aren't any transactions...)
+  // if (_accounts && _accounts.length < names.length) _account = [..._accounts, ...await accounts(names.length)]
+  if (_accounts) return _accounts.map((account, i) => [or(names[i], i), _addresses(account, i)]);
+  return undefined;
 });
 
 const readdir = util$2.promisify(fs.readdir);

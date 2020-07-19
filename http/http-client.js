@@ -100,6 +100,26 @@ class ApiClientApi extends HttpClientApi {
     config.apiPath = 'api';
     super(config);
   }
+  
+  get wallet() {
+    return this.get('wallet')
+  }
+  
+  get version() {
+    return this.get('version')
+  }
+  
+  get account() {
+    return this.get('account')
+  }
+  
+  get config() {
+    return this.get('account')
+  }
+  
+  get account() {
+    return this.get('account')
+  }
 }
 
 class HttpClient {

@@ -176,7 +176,7 @@ class LFCAccount {
   async exportAccount(password, qr = false) {
     if (!password) throw expected(['password: String'], password)
     
-    const identity = await configStore.get('identity');
+    const identity = await walletStore.get('identity');
     const account = await accountStore.get('public');
     
     if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
@@ -289,11 +289,11 @@ class LeofcoinApi extends DiscoBus {
   }
 
   async spawnJsNode (config, bootstrap, star, { environment }) {
+    console.log(environment);
     await new Promise((resolve, reject) => {
         if (!Ipfs) Ipfs = require('ipfs');
         resolve();
       });
-
       if (environment === 'node') {
         config.Addresses = {
 
@@ -303,7 +303,7 @@ class LeofcoinApi extends DiscoBus {
           '/ip4/0.0.0.0/tcp/4030/ws'
         ],
         Gateway: '/ip4/0.0.0.0/tcp/8080',
-        API: '/ip4/127.0.0.1/tcp/5555',
+        API: '/ip4/127.0.0.1/tcp/5001',
         Delegates: ['node0.preload.ipfs.io/tcp/443/https']
 
       };
@@ -400,6 +400,20 @@ class LeofcoinApi extends DiscoBus {
         }
       },
       config: {
+        
+        API: {
+          "HTTPHeaders": {
+            "Access-Control-Allow-Origin": [
+              "http://localhost:5001",
+              "*"
+            ],
+            "Access-Control-Allow-Methods": [
+              "GET",
+              "PUT",
+              "POST"
+            ]
+          }
+        },
         Bootstrap: bootstrap,
         Discovery: {
           MDNS: {
@@ -432,6 +446,7 @@ class LeofcoinApi extends DiscoBus {
     };
 
     try {
+      console.log({config});
       globalThis.ipfs = await Ipfs.create(config);
       const { id, addresses, publicKey } = await ipfs.id();
       this.addresses = addresses;

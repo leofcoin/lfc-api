@@ -116,7 +116,7 @@ export default class LFCAccount {
   async exportAccount(password, qr = false) {
     if (!password) throw expected(['password: String'], password)
     
-    const identity = await configStore.get('identity')
+    const identity = await walletStore.get('identity')
     const account = await accountStore.get('public')
     
     if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
