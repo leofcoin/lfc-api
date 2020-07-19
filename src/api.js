@@ -60,7 +60,7 @@ export default class LeofcoinApi extends DiscoBus {
       wallet = await response.json()
       GLOBSOURCE_IMPORT
       // TODO: give client its own package
-      // HTTPCLIENT_IMPORT
+      // HTTPCLIENT_IMPORT_disabled
       
       
       // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
@@ -272,9 +272,8 @@ export default class LeofcoinApi extends DiscoBus {
       GLOBSOURCE_IMPORT
       
       ipfs.addFromFs = async (path, recursive = false) => {
-        console.log(await globSource(path, { recursive }));
         const files = []
-        for await (const file of ipfs.add(globSource(path, { recursive }))) {
+        for await (const file of globalThis.ipfs.addAll(globSource(path, { recursive }))) {
           files.push(file)
         }
         return files;

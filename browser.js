@@ -236,12 +236,13 @@ class LeofcoinApi extends DiscoBus {
       let response = await fetch('http://127.0.0.1:5050/api/wallet', {});
       wallet = await response.json();
       
-      globalThis.HttpClient = require('./http/http-client');
+      // TODO: give client its own package
+      // globalThis.HttpClient = require('./http/http-client')_disabled
       
-      // TODO: 
-      const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
-      globalThis.api = client.api;
-      globalThis.ipfs = client.ipfs;
+      
+      // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
+      // globalThis.api = client.api
+      // globalThis.ipfs = client.ipfs
       return
     } else {
       await new Promise(async (resolve, reject) => {
@@ -267,10 +268,10 @@ class LeofcoinApi extends DiscoBus {
       const multiWallet = new MultiWallet(this.network);
       multiWallet.import(wallet.identity.multiWIF);
       globalThis.leofcoin.wallet = multiWallet;
-      if (config.target.environment === 'node' || config.target.environment === 'electron') {
-        
-        http();
-      }
+      // if (config.target.environment === 'node' || config.target.environment === 'electron') {
+      //   
+      //   http()
+      // }
       // globalThis.HttpClient = require('./http/http-client')
       // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
       // globalThis.ipfs = client.ipfs
@@ -286,7 +287,6 @@ class LeofcoinApi extends DiscoBus {
   }
 
   async spawnJsNode (config, bootstrap, star, { environment }) {
-    console.log(environment);
     await new Promise(async (resolve, reject) => {
         if (!globalThis.Ipfs) {
           globalThis.Ipfs = require('./node_modules/ipfs/dist/index.min.js');
@@ -460,9 +460,8 @@ class LeofcoinApi extends DiscoBus {
       
       
       ipfs.addFromFs = async (path, recursive = false) => {
-        console.log(await globSource(path, { recursive }));
         const files = [];
-        for await (const file of ipfs.add(globSource(path, { recursive }))) {
+        for await (const file of globalThis.ipfs.addAll(globSource(path, { recursive }))) {
           files.push(file);
         }
         return files;

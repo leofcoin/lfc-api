@@ -138,13 +138,4 @@ export default [{
   ],
   inlineDynamicImports: true,
   treeshake: true
-}, {
-  input: ['src/http/http.js', 'src/http/http-client.js'],
-  output: {
-    dir: 'http',
-    format: 'cjs'
-  },
-  plugins: [
-    json()
-  ]
 }]
