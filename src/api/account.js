@@ -54,7 +54,7 @@ export default class LFCAccount {
         privateKey: external.privateKey,
         walletId: external.id
       },
-      accounts: ['main account', external.address, internal.address],
+      accounts: [['main account', external.address, internal.address]],
       config: {
         miner: {
           intensity: 1,

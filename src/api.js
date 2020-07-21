@@ -78,9 +78,19 @@ export default class LeofcoinApi extends DiscoBus {
         const { identity, accounts, config } = await this.account.generateProfile()
         wallet.identity = identity
         wallet.accounts = accounts
+        wallet.version = 1
         walletStore.put(wallet)
         await accountStore.put('config', config);
         await accountStore.put('public', { walletId: wallet.identity.walletId });
+      } else {
+        // check if we are using correct accounts version
+        // if arr[0] is not an array, it means old version
+        if (!Array.isArray(wallet.accounts[0])) wallet.accounts = [wallet.accounts]
+        
+        // ensure we don't need barbaric methods again.
+        if (!wallet.version) wallet.version = 1
+        
+        // TODO: convert accounts[account] to objbased { name, addresses }
       }
       const multiWallet = new MultiWallet(this.network)
       multiWallet.import(wallet.identity.multiWIF)
