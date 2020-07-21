@@ -85,7 +85,10 @@ export default class LeofcoinApi extends DiscoBus {
       } else {
         // check if we are using correct accounts version
         // if arr[0] is not an array, it means old version
-        if (!Array.isArray(wallet.accounts[0])) wallet.accounts = [wallet.accounts]
+        if (!Array.isArray(wallet.accounts[0])) {
+          wallet.accounts = [wallet.accounts]
+          walletStore.put('accounts', wallet.accounts)
+        }
         
         // ensure we don't need barbaric methods again.
         if (!wallet.version) wallet.version = 1
