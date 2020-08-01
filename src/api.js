@@ -144,16 +144,16 @@ export default class LeofcoinApi extends DiscoBus {
     if (bootstrap === 'lfc') {
       if (environment === 'browser' && https || environment === 'electron') {
         bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
+         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
        ]
      } else if (environment === 'node') {
         bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4',
-         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
+         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4',
+         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
        ];
      } else {
        bootstrap = [
-        '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmbBM3idU5h5Gw73YoncGfjXJhzxveNvefpYwMbLAZWvk4'
+        '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
       ];
      }
 

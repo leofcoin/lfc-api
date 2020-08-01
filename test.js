@@ -16,8 +16,8 @@ const {codes, privateKey, mnemonic } = {
 try {
   const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: false, star: false}, 'lfc')
   
-  const result = await ipfs.addFromFs('D:/Workspace/altered-dimension/www', {recursive: true})
-  const veldshop = await ipfs.addFromFs('D:/Workspace/veldwinkel/public/www', {recursive: true})
+  const result = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/shop', {recursive: true})
+  const veldshop = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/admin', {recursive: true})
   const wetalk = await ipfs.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
   // const pinned = await ipfs.pin.ls()
   // for (const pin of pinned) {
@@ -28,37 +28,42 @@ try {
   for (const _key of keys) {
     if (_key.name === `wetalk.leofcoin.org`) key = _key
   }
-  if (!key){ key = await ipfs.key.gen(`wetalk.leofcoin.org`, {
+  if (!key) { key = await ipfs.key.gen(`wetalk.leofcoin.org`, {
     type: 'rsa',
     size: 2048
   });
-  // key = await ipfs.key.gen(`thealtereddimension.be`, {
-  //   type: 'rsa',
-  //   size: 2048
-  // });
+  key = await ipfs.key.gen(`shop.guldentopveldwinkel.be`, {
+    type: 'rsa',
+    size: 2048
+  });
+  
+  key = await ipfs.key.gen(`admin.guldentopveldwinkel.be`, {
+    type: 'rsa',
+    size: 2048
+  });
 }
     // console.log(key);
 
   for (const {cid, path} of result) {
     // console.log(cid.toString());
-    if (path === 'www') {
+    if (path === 'shop') {
       // setTimeout(async () => {
-        console.log(`TAD: cid: ${cid.toString()}`);
+        console.log(`SHOP: cid: ${cid.toString()}`);
         try {
-          const published = await ipfs.name.publish(cid, {key: 'thealtereddimension.com'})
+          const published = await ipfs.name.publish(cid, {key: 'shop.guldentopveldwinkel.be'})
           console.log({published});
         } catch (e) {
-          console.warn(`Failed publishing TAD`);
+          console.warn(`Failed publishing SHOP`);
         }
       // }, 5000);
     }
   }
   for (const {cid, path} of veldshop) {
-    if (path === 'www') {
+    if (path === 'admin') {
       // setTimeout(async () => {
-        console.log(`GVW: cid: ${cid.toString()}`);
+        console.log(`admin: cid: ${cid.toString()}`);
         try {
-          const published = await ipfs.name.publish(cid, {key: 'guldentopveldwinkel.be'})
+          const published = await ipfs.name.publish(cid, {key: 'admin.guldentopveldwinkel.be'})
           console.log({published});
         } catch (e) {
           console.warn(`Failed publishing GVW`);
