@@ -14,11 +14,13 @@ const {codes, privateKey, mnemonic } = {
   // tape.plan(2);
 (async () => {
 try {
-  const mm = await new m({start: true, init: true, bootstrap: 'lfc', forceJS: false, star: false}, 'lfc')
-  
-  const result = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/shop', {recursive: true})
+  const mm = await new m({start: true, init: true, forceJS: false, star: false}, 'lfc')
   const veldshop = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/admin', {recursive: true})
+  
+  const www = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/shop', {recursive: true})
+  
   const wetalk = await ipfs.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
+  
   // const pinned = await ipfs.pin.ls()
   // for (const pin of pinned) {
   //   console.log(pin);
@@ -41,23 +43,28 @@ try {
     type: 'rsa',
     size: 2048
   });
+  
+  key = await ipfs.key.gen(`www.guldentopveldwinkel.be`, {
+    type: 'rsa',
+    size: 2048
+  });
 }
     // console.log(key);
 
-  for (const {cid, path} of result) {
-    // console.log(cid.toString());
-    if (path === 'shop') {
-      // setTimeout(async () => {
-        console.log(`SHOP: cid: ${cid.toString()}`);
-        try {
-          const published = await ipfs.name.publish(cid, {key: 'shop.guldentopveldwinkel.be'})
-          console.log({published});
-        } catch (e) {
-          console.warn(`Failed publishing SHOP`);
-        }
-      // }, 5000);
-    }
-  }
+//   for (const {cid, path} of result) {
+//     // console.log(cid.toString());
+//     if (path === 'shop') {
+//       // setTimeout(async () => {
+//         console.log(`SHOP: cid: ${cid.toString()}`);
+//         try {
+//           const published = await ipfs.name.publish(cid, {key: 'shop.guldentopveldwinkel.be'})
+//           console.log({published});
+//         } catch (e) {
+//           console.warn(`Failed publishing SHOP`);
+//         }
+//       // }, 5000);
+//     }
+//   }
   for (const {cid, path} of veldshop) {
     if (path === 'admin') {
       // setTimeout(async () => {
@@ -71,16 +78,30 @@ try {
       // }, 5000);
     }
   }
-
+// 
+  for (const {cid, path} of www) {
+    if (path === 'shop') {
+      // setTimeout(async () => {
+        console.log(`www: cid: ${cid.toString()}`);
+        try {
+          const published = await ipfs.name.publish(cid, {key: 'www.guldentopveldwinkel.be'})
+          console.log({published});
+        } catch (e) {
+          console.warn(`Failed publishing www`);
+        }
+      // }, 5000);
+    }
+  }
+// console.log(await ipfs.swarm.peers());
   for (const {cid, path} of wetalk) {
     if (path === 'www') {
       // setTimeout(async () => {
         console.log(`wetalk: cid: ${cid.toString()}`);
         try {
-          const published = await ipfs.name.publish(cid, {key: 'wetalk.leofcoin.org'})
-          console.log({published});
+          // const published = await ipfs.name.publish(cid, {key: 'wetalk.leofcoin.org'})
+          // console.log({published});
         } catch (e) {
-
+  
             console.warn(`Failed publishing wetalk`);
         }
       // }, 5000);

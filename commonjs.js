@@ -3,36 +3,46 @@
 let Ipfs;
 let LeofcoinStorage;
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+var MultiWallet = require('@leofcoin/multi-wallet');
+var fetch = require('node-fetch');
+var AES = require('crypto-js/aes.js');
+var ENC = require('crypto-js/enc-utf8.js');
+var QRCode = require('qrcode');
+var path = require('path');
+var DiscoBus = require('@leofcoin/disco-bus');
+var multicodec = require('multicodec');
+require('libp2p-kad-dht');
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
 function _interopNamespace(e) {
   if (e && e.__esModule) { return e; } else {
-    var n = {};
+    var n = Object.create(null);
     if (e) {
       Object.keys(e).forEach(function (k) {
-        var d = Object.getOwnPropertyDescriptor(e, k);
-        Object.defineProperty(n, k, d.get ? d : {
-          enumerable: true,
-          get: function () {
-            return e[k];
-          }
-        });
+        if (k !== 'default') {
+          var d = Object.getOwnPropertyDescriptor(e, k);
+          Object.defineProperty(n, k, d.get ? d : {
+            enumerable: true,
+            get: function () {
+              return e[k];
+            }
+          });
+        }
       });
     }
     n['default'] = e;
-    return n;
+    return Object.freeze(n);
   }
 }
 
-var MultiWallet = _interopDefault(require('@leofcoin/multi-wallet'));
-var fetch = _interopDefault(require('node-fetch'));
-var AES = _interopDefault(require('crypto-js/aes.js'));
-var ENC = _interopDefault(require('crypto-js/enc-utf8.js'));
-var QRCode = _interopDefault(require('qrcode'));
-var path = require('path');
-var DiscoBus = _interopDefault(require('@leofcoin/disco-bus'));
-var multicodec = _interopDefault(require('multicodec'));
-require('libp2p-kad-dht');
+var MultiWallet__default = /*#__PURE__*/_interopDefaultLegacy(MultiWallet);
+var fetch__default = /*#__PURE__*/_interopDefaultLegacy(fetch);
+var AES__default = /*#__PURE__*/_interopDefaultLegacy(AES);
+var ENC__default = /*#__PURE__*/_interopDefaultLegacy(ENC);
+var QRCode__default = /*#__PURE__*/_interopDefaultLegacy(QRCode);
+var DiscoBus__default = /*#__PURE__*/_interopDefaultLegacy(DiscoBus);
+var multicodec__default = /*#__PURE__*/_interopDefaultLegacy(multicodec);
 
 const DEFAULT_QR_OPTIONS = {
   scale: 5,
@@ -77,7 +87,7 @@ class LFCAccount {
     options = { ...DEFAULT_QR_OPTIONS, ...options };
   
     
-    return QRCode.toDataURL(input, options);
+    return QRCode__default['default'].toDataURL(input, options);
   }
   
   async generateProfileQR(profile = {}, options = {}) {
@@ -91,7 +101,7 @@ class LFCAccount {
    * @return {object} { identity, accounts, config }
    */
   async generateProfile() {
-    const wallet = new MultiWallet(this.network);
+    const wallet = new MultiWallet__default['default'](this.network);
     /**
      * @type {string}
      */
@@ -131,11 +141,11 @@ class LFCAccount {
     if (qr) {
       identity = await e.scanImage(identity);
       console.log({identity});
-      identity = AES.decrypt(identity, password);
+      identity = AES__default['default'].decrypt(identity, password);
       console.log(identity.toString());
-      identity = JSON.parse(identity.toString(ENC));
+      identity = JSON.parse(identity.toString(ENC__default['default']));
       if (identity.mnemonic) {
-        const wallet = new MultiWallet(this.network);
+        const wallet = new MultiWallet__default['default'](this.network);
         await wallet.recover(identity.mnemonic);
         const account = wallet.account(0);
         const external = account.external(0);
@@ -155,7 +165,7 @@ class LFCAccount {
     }
     if (!identity) throw new Error('expected identity to be defined')
     if (identity.mnemonic) {
-      const wallet = new MultiWallet(this.network);
+      const wallet = new MultiWallet__default['default'](this.network);
       wallet.recover(identity.mnemonic);
       const account = wallet.account(0);
       const external = account.external(0);
@@ -181,7 +191,7 @@ class LFCAccount {
     
     if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
     
-    const encrypted = AES.encrypt(JSON.stringify({ ...identity, ...account }), password).toString();
+    const encrypted = AES__default['default'].encrypt(JSON.stringify({ ...identity, ...account }), password).toString();
     if (!qr) return encrypted
     
     return await this.generateQR(encrypted)
@@ -195,8 +205,8 @@ const https = (() => {
   return Boolean(globalThis.location.protocol === 'https:')
 })();
 
-class LeofcoinApi extends DiscoBus {
-  constructor(options = { init: true, start: true, bootstrap: 'lfc', forceJS: false, star: false, network: 'leofcoin' }) {
+class LeofcoinApi extends DiscoBus__default['default'] {
+  constructor(options = { init: true, start: true, forceJS: false, star: false, network: 'leofcoin' }) {
     super();
     this.network = options.network || 'leofcoin';
 
@@ -206,7 +216,7 @@ class LeofcoinApi extends DiscoBus {
 
   async hasDaemon() {
     try {
-      let response = await fetch('http://127.0.0.1:5050/api/version');
+      let response = await fetch__default['default']('http://127.0.0.1:5050/api/version');
       response = await response.json();
       return Boolean(response.client === '@leofcoin/api/http')
     } catch (e) {
@@ -236,7 +246,7 @@ class LeofcoinApi extends DiscoBus {
   async _spawn(config = {}, forceJS = false, wallet = {}) {
     if (!config.target) config.target = await this.target();
     if (config.target.daemon && !forceJS) {
-      let response = await fetch('http://127.0.0.1:5050/api/wallet', {});
+      let response = await fetch__default['default']('http://127.0.0.1:5050/api/wallet', {});
       wallet = await response.json();
       const IpfsHttpClient = require('ipfs-http-client');
       globalThis.IpfsHttpClient = IpfsHttpClient;
@@ -260,6 +270,7 @@ class LeofcoinApi extends DiscoBus {
       globalThis.walletStore = new LeofcoinStorage('lfc-wallet', `.leofcoin/${this.network}`);
       const account = await accountStore.get();
       wallet = await walletStore.get();
+      
       if (!wallet.identity) {
         const { identity, accounts, config } = await this.account.generateProfile();
         wallet.identity = identity;
@@ -277,11 +288,10 @@ class LeofcoinApi extends DiscoBus {
         }
         
         // ensure we don't need barbaric methods again.
-        if (!wallet.version) wallet.version = 1;
-        
+        if (!wallet.version) walletStore.put('version', 1);
         // TODO: convert accounts[account] to objbased { name, addresses }
       }
-      const multiWallet = new MultiWallet(this.network);
+      const multiWallet = new MultiWallet__default['default'](this.network);
       multiWallet.import(wallet.identity.multiWIF);
       globalThis.leofcoin.wallet = multiWallet;
       // if (config.target.environment === 'node' || config.target.environment === 'electron') {
@@ -292,17 +302,17 @@ class LeofcoinApi extends DiscoBus {
       // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
       // globalThis.ipfs = client.ipfs
       // globalThis.api = client.api
-      return await this.spawnJsNode(wallet, config.bootstrap, config.star, config.target)
+      return await this.spawnJsNode(wallet, config.star, config.target)
     }
   }
 
-  async _init({start, bootstrap, forceJS, star}) {
-    await this._spawn({bootstrap, star}, forceJS);
+  async _init({start, forceJS, star}) {
+    await this._spawn({ star}, forceJS);
     // await globalApi(this)
     return this
   }
 
-  async spawnJsNode (config, bootstrap, star, { environment }) {
+  async spawnJsNode (config, star, { environment }) {
     await new Promise((resolve, reject) => {
         if (!Ipfs) Ipfs = require('ipfs');
         resolve();
@@ -330,35 +340,35 @@ class LeofcoinApi extends DiscoBus {
         };
       }
 
-    if (bootstrap === 'lfc') {
-      if (environment === 'browser' && https || environment === 'electron') {
-        bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
-       ];
-     } else if (environment === 'node') {
-        bootstrap = [
-         '/dns4/star.leofcoin.org/tcp/4020/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4',
-         '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
-       ];
-     } else {
-       bootstrap = [
-        '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
-      ];
-     }
-
-    } else if (star) bootstrap = [];
+    // if (bootstrap === 'lfc') {
+    //   if (environment === 'browser' && https || environment === 'electron') {
+    //     bootstrap = [
+    //      '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
+    //    ]
+    //  } else if (environment === 'node') {
+    //     bootstrap = [
+    //      '/dns4/star.leofcoin.org/tcp/4020/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4',
+    //      '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
+    //    ];
+    //  } else {
+    //    bootstrap = [
+    //     '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
+    //   ];
+    //  }
+    // 
+    // } else if (star) bootstrap = [];
 
     config = {
       pass: config.identity.privateKey,
       repo: walletStore.root,
       ipld: {
         async loadFormat (codec) {
-          if (codec === multicodec.LEOFCOIN_BLOCK) {
-            return Promise.resolve().then(function () { return _interopNamespace(require('ipld-lfc')); })
-          } else if (codec === multicodec.LEOFCOIN_TX) {
-            return Promise.resolve().then(function () { return _interopNamespace(require('ipld-lfc-tx')); })
+          if (codec === multicodec__default['default'].LEOFCOIN_BLOCK) {
+            return Promise.resolve().then(function () { return /*#__PURE__*/_interopNamespace(require('ipld-lfc')); })
+          } else if (codec === multicodec__default['default'].LEOFCOIN_TX) {
+            return Promise.resolve().then(function () { return /*#__PURE__*/_interopNamespace(require('ipld-lfc-tx')); })
           } else {
-            throw new Error('unable to load format ' + multicodec.print[codec])
+            throw new Error('unable to load format ' + multicodec__default['default'].print[codec])
           }
         }
       },
@@ -414,27 +424,27 @@ class LeofcoinApi extends DiscoBus {
       },
       config: {
         
-        API: {
-          "HTTPHeaders": {
-            "Access-Control-Allow-Origin": [
-              "http://localhost:5001",
-              "*"
-            ],
-            "Access-Control-Allow-Methods": [
-              "GET",
-              "PUT",
-              "POST"
-            ]
-          }
-        },
-        Bootstrap: bootstrap,
+        // API: {
+        //   "HTTPHeaders": {
+        //     "Access-Control-Allow-Origin": [
+        //       "http://localhost:5001",
+        //       "*"
+        //     ],
+        //     "Access-Control-Allow-Methods": [
+        //       "GET",
+        //       "PUT",
+        //       "POST"
+        //     ]
+        //   }
+        // },
+        // Bootstrap: bootstrap,
         Discovery: {
           MDNS: {
-            Enabled: Boolean(!globalThis.navigator || /electron/i.test(navigator.userAgent)),
-            Interval: 1000
+            enabled: Boolean(!globalThis.navigator || /electron/i.test(navigator.userAgent)),
+            interval: 1000
           },
           webRTCStar: {
-            Enabled: true
+            enabled: true
           },
           websocketStar: {
             enabled: true
@@ -460,15 +470,47 @@ class LeofcoinApi extends DiscoBus {
 
     try {
       globalThis.ipfs = await Ipfs.create(config);
+      const version = await walletStore.get('version');
+      if (version !== 2 && star) {
+        const earth = [
+          '/dns4/ams-1.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd',
+          '/dns4/lon-1.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLMeWqB7YGVLJN3pNLQpmmEk35v6wYtsMGLzSr5QBU3',
+          '/dns4/sfo-3.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLPppuBtQSGwKDZT2M73ULpjvfd3aZ6ha4oFGL1KrGM',
+          '/dns4/sgp-1.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLSafTMBsPKadTEgaXctDQVcqN88CNLHXMkTNwMKPnu',
+          '/dns4/nyc-1.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLueR4xBeUbY9WZ9xGUUxunbKWcrNFTDAadQJmocnWm',
+          '/dns4/nyc-2.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLV4Bbm51jM9C4gDYZQ9Cy3U6aXMJDAbzgu2fzaDs64',
+          '/dns4/node0.preload.ipfs.io/tcp/443/wss/p2p/QmZMxNdpMkewiVZLMRxaNxUeZpDUb34pWjZ1kZvsd16Zic',
+          '/dns4/node1.preload.ipfs.io/tcp/443/wss/p2p/Qmbut9Ywz9YEDrz8ySBSgWyJk41Uvm2QJPhwDJzJyGFsD6',
+          '/dns4/node2.preload.ipfs.io/tcp/443/wss/p2p/QmV7gnbW5VTcJ3oyM2Xk1rdFBJ3kTkvxc87UFGsun29STS',
+          '/dns4/node3.preload.ipfs.io/tcp/443/wss/p2p/QmY7JB6MQXhxHvq7dBDh4HpbH29v4yE9JRadAVpndvzySN',
+          '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
+        ];
+        const strap = await ipfs.config.get('Bootstrap');
+        await ipfs.config.set('Bootstrap', earth);
+        
+        walletStore.put('version', 2);
+      }
+      
       const { id, addresses, publicKey } = await ipfs.id();
       this.addresses = addresses;
       this.peerId = id;
       this.publicKey = publicKey;
 
-      const strap = await ipfs.config.get('Bootstrap');
-      for (const addr of strap) {
-        await ipfs.swarm.connect(addr);
+      if (!star) {
+        const strap = await ipfs.config.get('Bootstrap');
+        
+        const index = strap.indexOf('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4');
+        if (index === -1) {
+          strap.push('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4');
+          await ipfs.config.set('Bootstrap', strap);
+          await ipfs.swarm.connect('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4');  
+        }
+        
+        for (const addr of strap) {
+          await ipfs.swarm.connect(addr);
+        }
       }
+      
       
       const IpfsHttpClient = require('ipfs-http-client');
       globalThis.IpfsHttpClient = IpfsHttpClient;
@@ -477,11 +519,16 @@ class LeofcoinApi extends DiscoBus {
       
       ipfs.addFromFs = async (path, recursive = false) => {
         const files = [];
-        for await (const file of globalThis.ipfs.addAll(globSource(path, { recursive }))) {
-          files.push(file);
+        try {
+          for await (const file of globalThis.ipfs.addAll(globSource(path, { recursive }))) {
+            files.push(file);
+          }
+        } catch (e) {
+          throw e
         }
         return files;
       };
+      
     } catch (e) {
       console.error(e);
     }
