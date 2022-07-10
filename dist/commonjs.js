@@ -19,7 +19,7 @@ var config = {
   },
   delete: async key => {
     return configStore.delete(key)
-  }    
+  }
 };
 
 const DEFAULT_QR_OPTIONS = {
@@ -85,7 +85,7 @@ const generateQR = async (input, options = {}) => {
   options = { ...DEFAULT_QR_OPTIONS, ...options };
 
   if (!QRCode) QRCode = require('qrcode');
-  
+
   return QRCode.toDataURL(input, options);
 };
 
@@ -107,7 +107,7 @@ const generateProfile = async () => {
   }
 };
 
-const account = { 
+const account = {
   generateQR,
   generateProfileQR,
   generateProfile,
@@ -129,12 +129,12 @@ const account = {
   },
   export: async password => {
     if (!password) throw expected(['password: String'], password)
-    
+
     const identity = await configStore.get('identity');
     const account = await accountStore.get('public');
-    
+
     if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
-    
+
     const encrypted = AES.encrypt(JSON.stringify({ ...identity, ...account }), password).toString();
     return await generateQR(encrypted)
   }
@@ -160,66 +160,66 @@ class LeofcoinStorage {
     this.db = new LevelStore(join(this.root, '.leofcoin', path));
     // this.db = level(path, { prefix: 'lfc-'})
   }
-  
-  async many(type, _value) {    
+
+  async many(type, _value) {
     const jobs = [];
-    
+
     for (const key of Object.keys(_value)) {
-      let value = _value[key];      
+      let value = _value[key];
       if (typeof value === 'object' ||
           typeof value === 'boolean' ||
           !isNaN(value)) value = JSON.stringify(value);
-          
+
       jobs.push(this[type](key, value));
     }
-    
+
     return Promise.all(jobs)
   }
-  
+
   async put(key, value) {
     if (typeof key === 'object') return this.many('put', key);
     if (typeof value === 'object' ||
         typeof value === 'boolean' ||
         !isNaN(value)) value = JSON.stringify(value);
-    
-    return this.db.put(new Key(key), value);    
+
+    return this.db.put(new Key(key), value);
   }
-  
+
   async query() {
     const object = {};
-    
+
     for await (let value of this.db.query({})) {
       const key = value.key.baseNamespace();
       value = value.value.toString();
       object[key] = this.possibleJSON(value);
     }
-    
+
     return object
   }
-  
+
   async get(key) {
     if (!key) return this.query()
     if (typeof key === 'object') return this.many('get', key);
-    
+
     let data = await this.db.get(new Key(key));
     if (!data) return undefined
     data = data.toString();
-        
+
     return this.possibleJSON(data)
   }
-  
+
   async delete(key) {
     return this.db.delete(new Key(key))
   }
-  
+
   possibleJSON(string) {
-    if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' || 
+    if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' ||
         string.charAt(0) === '[' && string.charAt(string.length - 1) === ']' ||
         string === 'true' ||
         string === 'false' ||
-        !isNaN(string)) 
+        !isNaN(string))
         string = JSON.parse(string);
-        
+
     return string;
   }
 
@@ -269,7 +269,7 @@ var upgrade = async config => {
   const end = Object.keys(versions).indexOf(version);
   // get array of versions to upgrade to
   const _versions = Object.keys(versions).slice(start, end + 1);
-  
+
   // apply config for each greater version
   // until current version is applied
   for (const key of _versions) {
@@ -277,7 +277,7 @@ var upgrade = async config => {
     config = merge(config, _config);
     if (key === '1.0.1') {
       globalThis.accountStore = new LeofcoinStorage(config.storage.account);
-      await accountStore.put({ public: { peerId: config.identity.peerId }});
+      await accountStore.put(JSON.stringify({ public: { peerId: config.identity.peerId }}));
     }
     config.version = key;
   }
@@ -287,74 +287,75 @@ var upgrade = async config => {
 
 var init = async _config => {
   globalThis.configStore = new LeofcoinStorage('config');
-  
+
   let config = await configStore.get();
+  console.log(config);
   if (!config || Object.keys(config).length === 0) {
     config = merge(DEFAULT_CONFIG, config);
     config = merge(config, _config);
-    
+
     // private node configuration & identity
-    await configStore.put(config);
+    await configStore.put(JSON.stringify(config));
     // by the public accessible account details
   }
-  
+
   config = await upgrade(config);
-  
+
   for (let path of Object.keys(config.storage)) {
     path = config.storage[path];
     const store = `${path}Store`;
     if (!globalThis[store]) globalThis[store] = new LeofcoinStorage(path);
   }
-  
+
   return config;
 };
 
 class Peernet {
   constructor(discoRoom) {
     this.discoRoom = discoRoom;
-    
+
     this.providerMap = new Map();
     return this
   }
-  
+
   get clientMap() {
     return this.discoRoom.clientMap
   }
-  
+
   get peerMap() {
     return this.discoRoom.peerMap
-  }  
-  
+  }
+
   async getDistance(provider) {
     const request = `https://tools.keycdn.com/geo.json?host=${provider.address}`;
     let response = await fetch(request);
     response = response.json();
     console.log(response);
   }
-  
+
   async providersFor(hash) {
     let providers = this.providerMap.get(hash);
     if (!providers || providers.length === 0) {
       await this.walk(hash);
       providers = this.providerMap.get(hash);
     }
-    
+
     let all = [];
-    
+
     for (const provider of providers) {
       all.push(this.getDistance(provider));
     }
-    
+
     all = await Promise.all(all);
-    
+
     const closestPeer = all.reduce((p, c) => {
       if (c.distance < p || p === 0) return c;
     }, 0);
-    
+
     // closestPeer
     // await connection()
   }
-  
+
   async walk(hash) {
     // perform a walk but resolve first encounter
     if (hash) {
@@ -373,32 +374,32 @@ class Peernet {
           if (!this.walking) this.walk();
           return this.peerMap.get(entry[0])
         }
-      }      
+      }
     }
-    
-    this.walking = true;    
+
+    this.walking = true;
     for (const entry of this.clientMap.entries()) {
       entry[0].request({url: 'ls', params: {}});
     }
     this.walking = false;
   }
-   
+
   get(contentHash) {
     this.providersFor(contentHash);
     // this.closestPeer()
   }
-  
+
   put() {
     // iam provider
   }
-  
+
   has() {
     // fd
   }
-  
+
   /**
    * Tries removing content from the network
-   * although it tries hard to remove the content from the network, 
+   * although it tries hard to remove the content from the network,
    * when you only have the location of that content.
    * see [why is my content still available](https://github.com/leofcoin/leofcoin-api/FAQ.md#why-is-my-content-still-available)
    */
@@ -427,7 +428,7 @@ class LeofcoinApi {
     console.log(options.init);
     if (options.init) return this._init(options)
   }
-  
+
   async _init({config, start}) {
     config = await init(config);
     if (!config.identity) {
@@ -438,29 +439,29 @@ class LeofcoinApi {
     if (start) await this.start(config);
     return this;
   }
-  
+
   async start(config = {}) {
     // spin up services
-    try {      
-      this.discoStar = await new DiscoStar(config);  
+    try {
+      this.discoStar = await new DiscoStar(config);
     } catch (e) {
       console.warn(`failed loading disco-star`);
-    }      
+    }
     this.discoRoom = await new DiscoRoom(config);
     this.peernet = new Peernet(this.discoRoom);
     return
     // this.dht = new SimpleDHT(this.peernet)
   }
-  // 
+  //
   // async request(multihash) {
   //   const providers = this.peernet.providers(multihash);
   //   const getFromClient = async (provider) => {
   //     const connection = await clientConnection(provider)
   //     return await connection.request({ url: 'get', params: { multihash }})
   //   }
-  //   return await Promise.race([getFromClient(providers[0]), getFromClient(providers[1]]))    
+  //   return await Promise.race([getFromClient(providers[0]), getFromClient(providers[1]]))
   // }
-  
+
   async pin(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
     let data;
@@ -471,38 +472,38 @@ class LeofcoinApi {
     }
     return this.put(hash, data)
   }
-  
+
   async publish(hash, name) {
     if (!name) name = this.discoRoom.config.identity.peerId;
     name = this.keys[name];
-    
+
     if (!name) this.keys[name] = this.createNameKey(name);
-    
+
     this.peernet.provide(name, hash);
   }
-  
+
   async resolve(name) {
     // check published bucket of all peers
     if (!this.keys[name]) throw `${name} name hasn't published any data or is offline`
     else resolve(name);
   }
-  
+
   async get(hash) {
     const providers = await this.peernet.providersFor(hash);
     if (!hash) throw expected(['hash: String'], { hash })
     return await blockStore.get(hash)
   }
-  
+
   async put(hash, data) {
     if (!hash || !data) throw expected(['hash: String', 'data: Object', 'data: String', 'data: Number', 'data: Boolean'], { hash, data })
     return await blockStore.put(hash, data)
   }
-  
+
   async rm(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
     return await blockStore.remove(hash)
   }
-  
+
   async ls(hash) {
     if (!hash) throw expected(['hash: String'], { hash })
     return await blockStore.ls(hash)

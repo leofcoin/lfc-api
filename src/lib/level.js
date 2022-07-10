@@ -1,25 +1,30 @@
-// const level = require('level');
-const LevelStore = require('datastore-level')
-const { homedir } = require('os')
-const { join } = require('path')
-const Key = require('interface-datastore').Key
-const {readdirSync, mkdirSync} = require('fs')
+import { LevelDatastore } from 'datastore-level'
+import { homedir } from 'os'
+import { join } from 'path'
+import { Key } from 'interface-datastore'
+import {readdirSync, mkdirSync} from 'fs'
 
 export default class LeofcoinStorage {
 
-  constructor(path, root = '.leofcoin') {
-    this.root = join(homedir(), root);
+  constructor(path, root = '.leofcoin', home = true) {
+    // this.name = options.name || path
+    this.name = path
+    if (!home) this.root = root
+    else this.root = join(homedir(), root)
+
     let exists;
     if (readdirSync) try {
       readdirSync(this.root)
     } catch (e) {
-      let _path = homedir()
-      const parts = root.split('/')
+      let _path = home ? homedir() : root
+      let parts = root.split('/')
+      if (parts.length === 0) parts = root.split(`\\`)
       if (e.code === 'ENOENT') {
-        
+        _path = ''
         if (parts.length > 0) {
           for (const path of parts) {
             _path = join(_path, path)
+            console.log(_path);
             try {
               readdirSync(_path)
             } catch (e) {
@@ -32,89 +37,73 @@ export default class LeofcoinStorage {
         }
       } else throw e
     }
-    this.db = new LevelStore(join(this.root, path));
-    // this.db = level(path, { prefix: 'lfc-'})
+    this.db = new LevelDatastore(join(this.root, path));
+    this.db.open()
   }
-  
-  toBuffer(value) {
-    if (Buffer.isBuffer(value)) return value;
-    if (typeof value === 'object' ||
-        typeof value === 'boolean' ||
-        !isNaN(value)) value = JSON.stringify(value);
-        
-    return Buffer.from(value)
-  }
-  
-  async many(type, _value) {    
+
+  async many(type, _value) {
     const jobs = [];
-    
+
     for (const key of Object.keys(_value)) {
-      const value = this.toBuffer(_value[key])
-      
-      jobs.push(this[type](key, value))
+      jobs.push(this[type](key, _value[key]))
     }
-    
+
     return Promise.all(jobs)
   }
-  
+
   async put(key, value) {
     if (typeof key === 'object') return this.many('put', key);
-    value = this.toBuffer(value)
-        
-    return this.db.put(new Key(String(key)), value);    
+    return this.db.put(new Key(key), value);
   }
-  
+
   async query() {
     const object = {}
-    
-    for await (let query of this.db.query({})) {
-      const key = query.key.baseNamespace()
-      object[key] = this.possibleJSON(query.value);
+    for await (const item of this.db.query({})) {
+      object[String(item.key).replace('/', '')] = item.value
     }
-    
     return object
   }
-  
+
   async get(key) {
     if (!key) return this.query()
     if (typeof key === 'object') return this.many('get', key);
-    let data = await this.db.get(new Key(String(key)))
-    if (!data) return undefined
-        
-    return this.possibleJSON(data)
+    return this.db.get(new Key(key))
   }
-  
+
   async has(key) {
     if (typeof key === 'object') return this.many('has', key);
-    
+
     try {
-      await this.db.get(new Key(String(key)))
+      await this.db.get(new Key(key))
       return true;
     } catch (e) {
       return false
     }
   }
-  
+
   async delete(key) {
-    return this.db.delete(new Key(String(key)))
+    return this.db.delete(new Key(key))
   }
-  
+
+  async keys(asUint8Array = false) {
+    const array = []
+    for await (const item of this.db.queryKeys({})) {
+      array.push(asUint8Array ? item.uint8Array() : item.toString())
+    }
+    return array
+  }
+
+  async length() {
+    const keys = await this.keys()
+    return keys.length
+  }
+
   async size() {
-    const object = await this.query()
-    return Object.keys(object).length
-  }
-  
-  possibleJSON(data) {
-    let string = data.toString();
-    if (string.charAt(0) === '{' && string.charAt(string.length - 1) === '}' || 
-        string.charAt(0) === '[' && string.charAt(string.length - 1) === ']' ||
-        string === 'true' ||
-        string === 'false' ||
-        !isNaN(string)) 
-        return JSON.parse(string);
-        
-    if (isNaN(data)) return data.toString()
-    return data
+    let size = 0
+    for await (const item of this.db.query({})) {
+      size += item.value.length
+    }
+    return size
   }
 
 }

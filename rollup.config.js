@@ -12,10 +12,16 @@ try {
   execSync('rm browser.js.tmp-browserify-*')
 } catch (e) {
 }
-execSync('cp node_modules/@leofcoin/storage/src/level.js src/lib/level.js')
-execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
-// execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
-execSync('cp node_modules/qr-scanner/qr-scanner-worker.min.js qr-scanner-worker.js')
+try {
+  execSync('cp node_modules/@leofcoin/storage/src/level.js src/lib/level.js')
+  execSync('cp node_modules/qrcode/build/qrcode.min.js src/lib/qrcode.js')
+  // execSync('cp node_modules/node-forge/dist/prime.worker.min.js forge/prime.worker.js')
+  execSync('cp node_modules/qr-scanner/qr-scanner-worker.min.js qr-scanner-worker.js')
+} catch (e) {
+
+} finally {
+
+}
 const exclude = [
   'node_modules/bip39/wordlists/chinese_simplified.json',
   'node_modules/bip39/wordlists/chinese_traditional.json',
@@ -50,7 +56,7 @@ export default [{
       IPFS_IMPORT: `new Promise(async (resolve, reject) => {
         if (!globalThis.Ipfs) {
           globalThis.Ipfs = require('./node_modules/ipfs/dist/index.min.js');
-        }        
+        }
         resolve()
       })`,
       DISCO_ROOM_IMPORT: `
@@ -61,7 +67,7 @@ export default [{
     // resolve({
     //   preferBuiltins: false,
     //   mainFields: ['module', 'main', 'browser']
-    // }),  
+    // }),
     resolve({
         preferBuiltins: false,
           // include: ['node_modules/**'],
