@@ -61,8 +61,8 @@ export default class LeofcoinApi extends DiscoBus {
       GLOBSOURCE_IMPORT
       // TODO: give client its own package
       // HTTPCLIENT_IMPORT_disabled
-      
-      
+
+
       // const client = new HttpClient({ host: '127.0.0.1', port: 5050, pass: wallet.identity.privateKey});
       // globalThis.api = client.api
       // globalThis.ipfs = client.ipfs
@@ -74,25 +74,32 @@ export default class LeofcoinApi extends DiscoBus {
       globalThis.walletStore = new LeofcoinStorage('lfc-wallet', `.leofcoin/${this.network}`)
       const account = await accountStore.get()
       wallet = await walletStore.get()
-      
+      wallet = {
+        accounts: JSON.parse(wallet.accounts.toString()),
+        identity: JSON.parse(wallet.identity.toString()),
+        version: wallet.version.toString(),
+      }
       if (!wallet.identity) {
         const { identity, accounts, config } = await this.account.generateProfile()
         wallet.identity = identity
         wallet.accounts = accounts
         wallet.version = 1
-        walletStore.put(wallet)
-        await accountStore.put('config', config);
-        await accountStore.put('public', { walletId: wallet.identity.walletId });
+        await walletStore.put('accounts', JSON.stringify(accounts))
+        await walletStore.put('identity', JSON.stringify(identity))
+        await walletStore.put('version', "1")
+
+        await accountStore.put('config', JSON.stringify(config));
+        await accountStore.put('public', JSON.stringify({ walletId: wallet.identity.walletId }));
       } else {
         // check if we are using correct accounts version
         // if arr[0] is not an array, it means old version
         if (!Array.isArray(wallet.accounts[0])) {
           wallet.accounts = [wallet.accounts]
-          walletStore.put('accounts', wallet.accounts)
+          walletStore.put('accounts', JSON.stringify(wallet.accounts))
         }
-        
+
         // ensure we don't need barbaric methods again.
-        if (!wallet.version) walletStore.put('version', 1)
+        if (!wallet.version) walletStore.put('version', "1")
         // TODO: convert accounts[account] to objbased { name, addresses }
       }
       const multiWallet = new MultiWallet(this.network)
@@ -156,7 +163,7 @@ export default class LeofcoinApi extends DiscoBus {
     //     '/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4'
     //   ];
     //  }
-    // 
+    //
     // } else if (star) bootstrap = [];
 
     config = {
@@ -224,7 +231,7 @@ export default class LeofcoinApi extends DiscoBus {
         }
       },
       config: {
-        
+
         // API: {
         //   "HTTPHeaders": {
         //     "Access-Control-Allow-Origin": [
@@ -272,6 +279,7 @@ export default class LeofcoinApi extends DiscoBus {
     try {
       globalThis.ipfs = await Ipfs.create(config)
       const version = await walletStore.get('version')
+      console.log(version);
       if (version !== 2 && star) {
         const earth = [
           '/dns4/ams-1.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd',
@@ -288,10 +296,10 @@ export default class LeofcoinApi extends DiscoBus {
         ]
         const strap = await ipfs.config.get('Bootstrap')
         await ipfs.config.set('Bootstrap', earth)
-        
+
         walletStore.put('version', 2)
       }
-      
+
       const { id, addresses, publicKey } = await ipfs.id()
       this.addresses = addresses
       this.peerId = id
@@ -299,22 +307,22 @@ export default class LeofcoinApi extends DiscoBus {
 
       if (!star) {
         const strap = await ipfs.config.get('Bootstrap')
-        
+
         const index = strap.indexOf('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4')
         if (index === -1) {
           strap.push('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4')
           await ipfs.config.set('Bootstrap', strap)
-          await ipfs.swarm.connect('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4')  
+          await ipfs.swarm.connect('/dns4/star.leofcoin.org/tcp/4003/wss/p2p/QmfShD2oP9b51eGPCNPHH3XC8K28VLXtgcR7fhpqJxNzH4')
         }
-        
+
         for (const addr of strap) {
           await ipfs.swarm.connect(addr)
         }
       }
-      
-      
+
+
       GLOBSOURCE_IMPORT
-      
+
       ipfs.addFromFs = async (path, recursive = false) => {
         const files = []
         try {
@@ -326,7 +334,7 @@ export default class LeofcoinApi extends DiscoBus {
         }
         return files;
       }
-      
+
     } catch (e) {
       console.error(e);
     }

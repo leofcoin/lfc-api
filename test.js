@@ -15,18 +15,43 @@ const {codes, privateKey, mnemonic } = {
 (async () => {
 try {
   const mm = await new m({start: true, init: true, forceJS: false, star: false}, 'lfc')
+  console.log(mm);
   const veldshop = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/admin', {recursive: true})
-  
+
   const www = await ipfs.addFromFs('D:/Workspace/veldwinkel/www/shop', {recursive: true})
-  
+
   const wetalk = await ipfs.addFromFs('D:/Workspace-laptop/we/we-talk-web/www', { recursive: true })
-  
+  const interface = await ipfs.addFromFs('D:/Workspace/swap/interface/www', { recursive: true })
+  const lp = await ipfs.addFromFs('D:/Workspace/swap/swapkoala/www', { recursive: true })
+  const privatebank = await ipfs.addFromFs('D:/Workspace/pyrabank/www', { recursive: true })
+  const minter = await ipfs.addFromFs('D:/Workspace/swap/minter/www', { recursive: true })
+  // const arteon = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/mine/www', { recursive: true })
+  const node = await ipfs.addFromFs('D:/Workspace/leofcoin/node/www', { recursive: true })
+  // const simple = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/simple-activate/www', { recursive: true })
+  // const arteonLP = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/www/www', { recursive: true })
+  // const claim = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/claim-rewards/www', { recursive: true })
+  // const assets = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/assets', { recursive: true })
+  // const nfts = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/nfts', { recursive: true })
+  // const exchange = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/exchange/www', { recursive: true })
+  // const lottery = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/lottery/www', { recursive: true })
+  // const faucet = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/faucet/www', { recursive: true })
+  // const stats = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/stats/www', { recursive: true })
+  // const artNode = await ipfs.addFromFs('D:/Workspace/Arteon/monorepo/node/www', { recursive: true })
+  const dimac = await ipfs.addFromFs('D:/Workspace/dimac/dimac/www', { recursive: true })
+
+
+
+  // await ipfs.swarm.connect('/ip4/188.166.108.140/tcp/4001/p2p/12D3KooWEJMb6JBAoxm4TsgUsuKhrRxRELC3BsQhj5DuvAUFGnA5')
   // const pinned = await ipfs.pin.ls()
   // for (const pin of pinned) {
   //   console.log(pin);
   // }
   const keys = await ipfs.key.list();
   let key
+  // key = await ipfs.key.gen(`swaphome.leofcoin.org`, {
+  //   type: 'rsa',
+  //   size: 2048
+  // });
   for (const _key of keys) {
     if (_key.name === `wetalk.leofcoin.org`) key = _key
   }
@@ -38,13 +63,98 @@ try {
     type: 'rsa',
     size: 2048
   });
-  
+
   key = await ipfs.key.gen(`admin.guldentopveldwinkel.be`, {
     type: 'rsa',
     size: 2048
   });
-  
+
   key = await ipfs.key.gen(`www.guldentopveldwinkel.be`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`swap.leofcoin.org`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`privatebank.leofcoin.org`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`minter.leofcoin.org`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`arteon.leofcoin.org`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`node.leofcoin.org`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`simple.leofcoin.org`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  // key = await ipfs.key.gen(`claim.artonline.site`, {
+  //   type: 'rsa',
+  //   size: 2048
+  // });
+
+  key = await ipfs.key.gen(`test.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`assets.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`nfts.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`exchange.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`lottery.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`faucet.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`stats.artonline.site`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`dimac.be`, {
+    type: 'rsa',
+    size: 2048
+  });
+
+  key = await ipfs.key.gen(`node.artonline.site`, {
     type: 'rsa',
     size: 2048
   });
@@ -65,6 +175,240 @@ try {
 //       // }, 5000);
 //     }
 //   }
+
+// for (const {cid, path} of artNode) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`art node: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'node.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing art node`);
+//       }
+//     // }, 5000);
+//   }
+// }
+for (const {cid, path} of dimac) {
+  if (path === 'www') {
+    // setTimeout(async () => {
+      console.log(`dimac: cid: ${cid.toString()}`);
+      try {
+        const published = await ipfs.name.publish(cid, {key: 'dimac.artonline.site'})
+        console.log({published});
+      } catch (e) {
+        console.warn(`Failed publishing dimac`);
+      }
+    // }, 5000);
+  }
+}
+// for (const {cid, path} of stats) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`stats: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'stats.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing stats`);
+//       }
+//     // }, 5000);
+//   }
+// }
+
+// for (const {cid, path} of faucet) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`faucet: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'faucet.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing faucet`);
+//       }
+//     // }, 5000);
+//   }
+// }
+//
+// for (const {cid, path} of lottery) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`lottery: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'lottery.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing lottery`);
+//       }
+//     // }, 5000);
+//   }
+// }
+//
+// for (const {cid, path} of exchange) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`exchange: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'exchange.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing exchange`);
+//       }
+//     // }, 5000);
+//   }
+// }
+//
+// for (const {cid, path} of nfts) {
+//   if (path === 'nfts') {
+//     // setTimeout(async () => {
+//       console.log(`nfts: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'nfts.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing assets`);
+//       }
+//     // }, 5000);
+//   }
+// }
+//
+// for (const {cid, path} of assets) {
+//   if (path === 'assets') {
+//     // setTimeout(async () => {
+//       console.log(`assets: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'assets.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing assets`);
+//       }
+//     // }, 5000);
+//   }
+// }
+// for (const {cid, path} of claim) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`claim: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'claim.artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing claim`);
+//       }
+//     // }, 5000);
+//   }
+// }
+
+// for (const {cid, path} of simple) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`simple: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'simple.leofcoin.org'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing simple`);
+//       }
+//     // }, 5000);
+//   }
+// }
+//
+// for (const {cid, path} of arteonLP) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`arteonLP: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'artonline.site'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing node`);
+//       }
+//     // }, 5000);
+//   }
+// }
+
+for (const {cid, path} of node) {
+  if (path === 'www') {
+    // setTimeout(async () => {
+      console.log(`node: cid: ${cid.toString()}`);
+      try {
+        const published = await ipfs.name.publish(cid, {key: 'node.leofcoin.org'})
+        console.log({published});
+      } catch (e) {
+        console.warn(`Failed publishing node`);
+      }
+    // }, 5000);
+  }
+}
+
+// for (const {cid, path} of arteon) {
+//   if (path === 'www') {
+//     // setTimeout(async () => {
+//       console.log(`arteon: cid: ${cid.toString()}`);
+//       try {
+//         const published = await ipfs.name.publish(cid, {key: 'arteon.leofcoin.org'})
+//         console.log({published});
+//       } catch (e) {
+//         console.warn(`Failed publishing arteon`);
+//       }
+//     // }, 5000);
+//   }
+// }
+
+  for (const {cid, path} of interface) {
+    if (path === 'www') {
+      // setTimeout(async () => {
+        console.log(`swap: cid: ${cid.toString()}`);
+        try {
+          const published = await ipfs.name.publish(cid, {key: 'swap.leofcoin.org'})
+          console.log({published});
+        } catch (e) {
+          console.warn(`Failed publishing swap`);
+        }
+      // }, 5000);
+    }
+  }
+  for (const {cid, path} of lp) {
+    if (path === 'www') {
+      // setTimeout(async () => {
+        console.log(`swap lp: cid: ${cid.toString()}`);
+        try {
+          const published = await ipfs.name.publish(cid, {key: 'swaphome.leofcoin.org'})
+          console.log({published});
+        } catch (e) {
+          console.warn(`Failed publishing swap`);
+        }
+      // }, 5000);
+    }
+  }
+
+  for (const {cid, path} of privatebank) {
+    if (path === 'www') {
+      // setTimeout(async () => {
+        console.log(`privatebank: cid: ${cid.toString()}`);
+        try {
+          const published = await ipfs.name.publish(cid, {key: 'privatebank.leofcoin.org'})
+          console.log({published});
+        } catch (e) {
+          console.warn(`Failed publishing privatebank`);
+        }
+      // }, 5000);
+    }
+  }
+
+  for (const {cid, path} of minter) {
+    if (path === 'www') {
+      // setTimeout(async () => {
+        console.log(`minter: cid: ${cid.toString()}`);
+        try {
+          const published = await ipfs.name.publish(cid, {key: 'minter.leofcoin.org'})
+          console.log({published});
+        } catch (e) {
+          console.warn(`Failed publishing minter`);
+        }
+      // }, 5000);
+    }
+  }
   for (const {cid, path} of veldshop) {
     if (path === 'admin') {
       // setTimeout(async () => {
@@ -78,7 +422,7 @@ try {
       // }, 5000);
     }
   }
-// 
+//
   for (const {cid, path} of www) {
     if (path === 'shop') {
       // setTimeout(async () => {
@@ -101,7 +445,7 @@ try {
           // const published = await ipfs.name.publish(cid, {key: 'wetalk.leofcoin.org'})
           // console.log({published});
         } catch (e) {
-  
+
             console.warn(`Failed publishing wetalk`);
         }
       // }, 5000);

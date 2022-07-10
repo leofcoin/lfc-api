@@ -6,27 +6,26 @@ import ENC from 'crypto-js/enc-utf8.js';
 import QRCode from 'qrcode'
 import QrScanner from './../../node_modules/qr-scanner/qr-scanner.min.js';
 import { join } from 'path'
-QrScanner.WORKER_PATH = join(__dirname, 'qr-scanner-worker.js');
 
 export default class LFCAccount {
   constructor(network) {
     this.network = network
   }
-  
+
   async generateQR(input, options = {}) {
     options = { ...DEFAULT_QR_OPTIONS, ...options };
-  
-    
+
+
     return QRCode.toDataURL(input, options);
   }
-  
+
   async generateProfileQR(profile = {}, options = {}) {
     if (!profile || !profile.mnemonic) throw expected(['mnemonic: String'], profile)
     profile = JSON.stringify(profile);
     return this.generateQR(profile, options);
   }
   //
-  
+
   /**
    * @return {object} { identity, accounts, config }
    */
@@ -45,7 +44,7 @@ export default class LFCAccount {
      */
     const external = account.external(0)
     const internal = account.internal(0)
-    
+
     return {
       identity: {
         mnemonic,
@@ -65,8 +64,8 @@ export default class LFCAccount {
        }
     }
   }
-  
-  
+
+
   async importAccount(identity, password, qr = false) {
     if (qr) {
       identity = await QrScanner.scanImage(identity)
@@ -88,9 +87,9 @@ export default class LFCAccount {
         let config = await configStore.get()
         config = { ...config, ...{ identity } }
         await configStore.put(config)
-      }    
+      }
       return identity
-      
+
       // return await this.generateQR(decrypted)
     }
     if (!identity) throw new Error('expected identity to be defined')
@@ -109,21 +108,21 @@ export default class LFCAccount {
     let config = await configStore.get()
     config = { ...config, ...{ identity } }
     await configStore.put(config)
-    
+
     return identity
   }
-  
+
   async exportAccount(password, qr = false) {
     if (!password) throw expected(['password: String'], password)
-    
+
     const identity = await walletStore.get('identity')
     const account = await accountStore.get('public')
-    
+
     if (!identity.mnemonic) throw expected(['mnemonic: String'], identity)
-    
+
     const encrypted = AES.encrypt(JSON.stringify({ ...identity, ...account }), password).toString()
     if (!qr) return encrypted
-    
+
     return await this.generateQR(encrypted)
   }
 
