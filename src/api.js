@@ -278,8 +278,8 @@ export default class LeofcoinApi extends DiscoBus {
 
     try {
       globalThis.ipfs = await Ipfs.create(config)
-      const version = await walletStore.get('version')
-      console.log(version);
+      let version = await walletStore.get('version')
+      version = version.toString()
       if (version !== 2 && star) {
         const earth = [
           // '/dns4/ams-1.bootstrap.libp2p.io/tcp/443/wss/p2p/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd',
@@ -297,7 +297,7 @@ export default class LeofcoinApi extends DiscoBus {
         const strap = await ipfs.config.get('Bootstrap')
         await ipfs.config.set('Bootstrap', earth)
 
-        walletStore.put('version', 2)
+        walletStore.put('version', '2')
       }
 
       const { id, addresses, publicKey } = await ipfs.id()
